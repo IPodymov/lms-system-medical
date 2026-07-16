@@ -1,0 +1,12 @@
+table {
+  width: 100%;
+  background: var(--color-surface);
+  border-collapse: collapse;
+}
+
+td,
+th {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--color-border);
+}

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}{% block content %}
+<h1>Главная</h1>
+<h2>Продолжить обучение</h2>
+{% for e in enrollments %}<a
+  class="card"
+  href="{% url 'course-learning' e.id %}"
+  ><strong>{{ e.course_run.title }}</strong
+  ><small>{{ e.progress_percent }}% завершено</small></a
+>{% empty %}
+<p>
+  Нет активных курсов. <a href="{% url 'course-catalog' %}">Открыть каталог</a>
+</p>
+{% endfor %}{% endblock %}

@@ -1,0 +1,29 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{% block title %}МедЛМС{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  </head>
+  <body>
+    <header>
+      <a href="/">МедЛМС</a>{% if user.is_authenticated %}
+      <nav>
+        <a href="/courses/mine/">Мои курсы</a
+        ><a href="/courses/catalog/">Каталог</a
+        ><a href="/courses/create/">Создать курс</a
+        ><a href="/notifications/">Уведомления</a
+        ><a href="/profile/">{{ user.email }}</a><a href="/logout/">Выйти</a>
+      </nav>
+      {% endif %}
+    </header>
+    <main>
+      {% for message in messages %}
+      <p class="alert">{{ message }}</p>
+      {% endfor %}{% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

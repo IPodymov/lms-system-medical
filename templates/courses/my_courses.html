@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Мои курсы</h1>{% for e in enrollments %}<a class="card" href="{% url 'course-learning' e.id %}">{{ e.course_run.title }} — {{ e.progress_percent }}%</a>{% empty %}<p>Вы пока не записаны на курсы.</p>{% endfor %}{% endblock %}

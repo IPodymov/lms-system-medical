@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Журнал: {{ run.title }}</h1><table><tr><th>Студент</th><th>Прогресс</th><th>Итог</th></tr>{% for e in enrollments %}<tr><td>{{ e.user }}</td><td>{{ e.progress_percent }}%</td><td>{{ e.final_score|default:'—' }}</td></tr>{% endfor %}</table>{% endblock %}

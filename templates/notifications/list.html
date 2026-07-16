@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Уведомления</h1>{% for item in notifications %}<a class="card" href="{% url 'notification-detail' item.id %}"><strong>{{ item.title }}</strong><p>{{ item.body }}</p></a>{% empty %}<p>Уведомлений нет.</p>{% endfor %}{% endblock %}

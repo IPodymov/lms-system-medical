@@ -1,0 +1,21 @@
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 5%;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+nav {
+  display: flex;
+  gap: 16px;
+}
+
+@media (max-width: 700px) {
+  nav {
+    gap: 8px;
+    font-size: 12px;
+  }
+}
