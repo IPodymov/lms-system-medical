@@ -1,1 +1,5 @@
-{% extends 'base.html' %}{% block content %}<h1>Уведомления</h1>{% for item in notifications %}<a class="card" href="{% url 'notification-detail' item.id %}"><strong>{{ item.title }}</strong><p>{{ item.body }}</p></a>{% empty %}<p>Уведомлений нет.</p>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<section class="section-heading"><div><p class="eyebrow">Центр событий</p><h1>Уведомления</h1></div>{% if notifications %}<form method="post" action="{% url 'mark-all-notifications-read' %}">{% csrf_token %}<button class="button-secondary">Прочитать все</button></form>{% endif %}</section>
+<div class="notification-list">{% for item in notifications %}<a class="card notification-item {% if not item.is_read %}is-unread{% endif %}" href="{% url 'notification-detail' item.id %}"><div><strong>{{ item.title }}</strong><p>{{ item.body }}</p></div><time>{{ item.created_at|date:"d.m H:i" }}</time></a>{% empty %}<div class="empty-state"><h2>Новых событий нет</h2><p>Здесь появятся сообщения, напоминания и изменения в курсах.</p></div>{% endfor %}</div>
+{% endblock %}

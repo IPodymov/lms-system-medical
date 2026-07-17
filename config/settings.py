@@ -33,7 +33,12 @@ def database_config(database_url: str) -> dict[str, Any]:
 
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-local-development-key")
-DEBUG = os.getenv("DEBUG", "1") == "1"
+IS_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
+DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_RAILWAY
+_configured_admin_url = os.getenv("DJANGO_ADMIN_URL", "").strip("/")
+# Keep the familiar URL during local development. In production, including Railway,
+# the admin is deliberately unavailable until a private URL is configured.
+ADMIN_URL = "admin/" if DEBUG else f"{_configured_admin_url}/" if _configured_admin_url else ""
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 if railway_domain := os.getenv("RAILWAY_PUBLIC_DOMAIN"):
     ALLOWED_HOSTS.append(railway_domain)
@@ -62,6 +67,7 @@ INSTALLED_APPS = [
     "apps.assessments",
     "apps.grading",
     "apps.notifications",
+    "apps.messaging",
     "apps.audit",
 ]
 MIDDLEWARE = [
@@ -86,6 +92,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "config.context_processors.static_asset_version",
+                "config.context_processors.navigation_context",
             ]
         },
     }
@@ -120,6 +128,7 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+WHITENOISE_MANIFEST_STRICT = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

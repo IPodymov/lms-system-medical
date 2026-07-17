@@ -9,6 +9,7 @@ from django.utils.text import slugify
 from apps.assessments.models import Question, QuestionOption, Quiz, QuizQuestion
 from apps.assessments.permissions import can_edit_course
 from apps.learning.services import EnrollmentError, enroll
+from apps.organizations.models import Organization
 
 from .models import (
     ContentBlock,
@@ -117,7 +118,14 @@ def course_create(request):
         .select_related("organization")
         .first()
     )
-    if not membership:
+    if request.user.is_superuser:
+        organization = Organization.objects.filter(is_active=True).order_by("created_at").first()
+        if not organization:
+            messages.error(request, "Сначала создайте организацию в разделе администрирования.")
+            return redirect("admin-dashboard")
+    elif membership:
+        organization = membership.organization
+    else:
         raise PermissionDenied
 
     if request.method == "POST":
@@ -128,9 +136,9 @@ def course_create(request):
 
         with transaction.atomic():
             course = Course.objects.create(
-                organization=membership.organization,
+                organization=organization,
                 title=title,
-                slug=_course_slug(membership.organization, title),
+                slug=_course_slug(organization, title),
                 short_description=request.POST.get("short_description", "").strip(),
                 description=request.POST.get("description", "").strip(),
                 cover=request.FILES.get("cover"),

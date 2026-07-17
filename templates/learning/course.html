@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load learning_tags %}
 {% block content %}
-<h1>{{ enrollment.course_run.title }}</h1>
+<div class="section-heading"><h1>{{ enrollment.course_run.title }}</h1><a href="{% url 'course-chat' enrollment.course_run.id %}">Общий чат →</a></div>
 <section class="progress-card" aria-label="Прогресс по курсу"><div class="progress-heading"><strong>Ваш прогресс</strong><span>{{ enrollment.progress_percent }}%</span></div><div class="progress-track"><div class="progress-value" style="width: {{ enrollment.progress_percent }}%"></div></div><p>Отмечайте материалы по мере изучения; зачёт теста также обновляет прогресс.</p></section>
 <div class="learning-layout">
   <aside class="course-outline"><h2>Программа</h2><ol>{% for block in blocks %}{% with progress=progresses|get_item:block.id %}<li class="{% if block == current_block %}is-current{% endif %}{% if progress and progress.status == 'completed' %} is-completed{% endif %}">{% if block.is_available %}<a href="?block={{ block.id }}">{% if progress and progress.status == 'completed' %}✓ {% endif %}{{ block.title }}</a>{% else %}<span>🔒 {{ block.title }}</span>{% endif %}<small>{{ block.lesson.title }}</small></li>{% endwith %}{% empty %}<li>Программа пока пуста.</li>{% endfor %}</ol></aside>

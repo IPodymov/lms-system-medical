@@ -5,18 +5,44 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{% block title %}МедЛМС{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/base/tokens.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/base/reset.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/layouts/application.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/components/navigation.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/components/card.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/components/forms.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/components/feedback.css' %}?v={{ static_asset_version }}" />
+    <link rel="stylesheet" href="{% static 'css/components/table.css' %}?v={{ static_asset_version }}" />
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="/"><span class="brand-mark">M</span><span>МедЛМС</span></a>{% if user.is_authenticated %}
+      <a class="brand" href="/"
+        ><span class="brand-mark">M</span><span>МедЛМС</span></a
+      >{% if user.is_authenticated %}
       <nav class="main-nav" aria-label="Основная навигация">
         <a href="/courses/mine/">Мои курсы</a>
         <a href="/courses/catalog/">Каталог</a>
         <a class="nav-create" href="/courses/create/">Создать курс</a>
-        <a href="/notifications/">Уведомления</a>
-        <a class="profile-link" href="/profile/">{{ user.email }}</a><a class="logout-link" href="/logout/">Выйти</a>
+        {% if can_open_management %}<a href="{% url 'admin-dashboard' %}">Управление</a>{% endif %}
+        <a class="nav-counter-link" href="{% url 'direct-messages' %}">Сообщения{% if unread_messages_count %}<span class="nav-badge" aria-label="Непрочитанные сообщения: {{ unread_messages_count }}">{{ unread_messages_count }}</span>{% endif %}</a>
+        <a class="nav-counter-link" href="/notifications/">Уведомления{% if unread_notifications_count %}<span class="nav-badge" aria-label="Непрочитанные уведомления: {{ unread_notifications_count }}">{{ unread_notifications_count }}</span>{% endif %}</a>
+        <details class="profile-menu">
+          <summary aria-label="Открыть меню профиля">
+            <span class="profile-menu-name">{{ user.get_full_name|default:user.email }}</span>
+            <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="profile-menu-panel">
+            <p>{{ user.email }}</p>
+            <a href="{% url 'profile' %}">Профиль</a>
+            <a class="profile-menu-logout" href="{% url 'logout' %}">Выйти</a>
+          </div>
+        </details>
+      </nav>
+      {% else %}
+      <nav class="main-nav" aria-label="Навигация гостя">
+        <a href="{% url 'login' %}">Войти</a>
+        <a class="nav-create" href="{% url 'register' %}">Создать аккаунт</a>
       </nav>
       {% endif %}
     </header>

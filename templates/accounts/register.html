@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация — МедЛМС{% endblock %}
+{% block content %}
+<section class="auth"><p class="eyebrow">Новый аккаунт</p><h1>Начните обучение</h1><p>Создайте аккаунт, чтобы записываться на курсы и отслеживать прогресс.</p><form method="post" class="form-card">{% csrf_token %}{{ form.as_p }}<button>Создать аккаунт</button><p class="auth-footer">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p></form></section>
+{% endblock %}

@@ -4,13 +4,18 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
+urlpatterns = []
+
+if settings.ADMIN_URL:
+    urlpatterns.append(path(settings.ADMIN_URL, admin.site.urls))
+
+urlpatterns += [
     path("", include("apps.accounts.urls")),
     path("courses/", include("apps.courses.urls")),
     path("learning/", include("apps.learning.urls")),
     path("quizzes/", include("apps.assessments.urls")),
     path("notifications/", include("apps.notifications.urls")),
+    path("messages/", include("apps.messaging.urls")),
     path("grading/", include("apps.grading.urls")),
     path("api/v1/", include("config.api_urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

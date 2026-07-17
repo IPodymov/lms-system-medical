@@ -1,1 +1,10 @@
-{% extends 'base.html' %}{% block content %}<section class="page-header"><p class="eyebrow">Аккаунт</p><h1>Профиль</h1><p>Данные вашей учётной записи.</p></section><div class="profile-card"><div class="avatar">{{ user.email|first|upper }}</div><div><h2>{{ user.get_full_name|default:user.email }}</h2><p>{{ user.email }}</p></div></div>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-header"><p class="eyebrow">Аккаунт</p><h1>Профиль</h1><p>Управляйте личными данными и следите за историей обучения.</p></section>
+<div class="profile-card">{% if user.avatar %}<img class="avatar-image" src="{{ user.avatar.url }}" alt="Аватар {{ user.get_full_name|default:user.email }}">{% else %}<div class="avatar">{{ user.email|first|upper }}</div>{% endif %}<div><h2>{{ user.get_full_name|default:user.email }}</h2><p>{{ user.email }}</p></div></div>
+<div class="editor-grid profile-grid">
+  <form class="form-card" method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="profile"><h2>Личные данные</h2>{{ profile_form.as_p }}<button type="submit">Сохранить изменения</button></form>
+  <form class="form-card" method="post">{% csrf_token %}<input type="hidden" name="action" value="password"><h2>Смена пароля</h2>{{ password_form.as_p }}<button type="submit">Обновить пароль</button></form>
+</div>
+<section class="history-section"><div class="section-heading"><h2>История обучения</h2><a href="{% url 'my-courses' %}">Все курсы →</a></div><div class="course-list">{% for enrollment in history %}<a class="learning-card" href="{% url 'course-learning' enrollment.id %}"><div><p class="card-kicker">{{ enrollment.get_status_display }}</p><h3>{{ enrollment.course_run.course.title }}</h3><p>{{ enrollment.course_run.title }}</p></div><div class="card-progress"><span>{{ enrollment.progress_percent }}%</span><div class="mini-progress"><i style="width: {{ enrollment.progress_percent }}%"></i></div></div></a>{% empty %}<div class="empty-state"><h2>История пока пуста</h2><p>После записи на курс здесь появится ваш прогресс.</p><a class="button-link" href="{% url 'course-catalog' %}">Открыть каталог</a></div>{% endfor %}</div></section>
+{% endblock %}
