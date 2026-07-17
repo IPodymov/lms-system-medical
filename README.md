@@ -7,15 +7,22 @@
 ```bash
 cp .env.example .env
 docker compose up --build
-# в отдельном терминале
-docker compose exec web python manage.py seed_demo
 ```
 
-Локально без Docker: `.venv/bin/python manage.py migrate && .venv/bin/python manage.py seed_demo && .venv/bin/python manage.py runserver`.
+Локально без Docker: `.venv/bin/python manage.py migrate && .venv/bin/python manage.py runserver`.
 
 Приложение: http://localhost:8000, admin: http://localhost:8000/admin/, API-документация: http://localhost:8000/api/docs/.
 
-Demo-пользователи: `admin@demo.local`, `teacher@demo.local`, `student1@demo.local`, `student2@demo.local`; пароль: `demo12345`.
+Создайте системного администратора командой `.venv/bin/python manage.py createsuperuser`.
+
+## Создание курса
+
+1. Преподаватель создаёт курс, указав название и описание.
+2. Курс сохраняется как черновик и открывается в конструкторе программы.
+3. В конструкторе можно добавить разделы, темы, текстовые блоки, файлы, тесты и ссылки на дополнительные материалы; порядок блоков внутри темы меняется перетаскиванием.
+4. Черновик виден только его автору в каталоге и по кнопке «Открыть черновик курса». При публикации автоматически создаётся активный основной поток, и курс становится доступен студентам в общем каталоге.
+
+Системный администратор открывает актуальную закрытую документацию из раздела «Управление». Ссылка криптографически подписана, привязана к учётной записи администратора и действует 24 часа.
 
 Проверки: `.venv/bin/python manage.py test`, `.venv/bin/ruff check .`, `.venv/bin/ruff format --check .`.
 

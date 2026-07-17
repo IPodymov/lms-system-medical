@@ -1,12 +1,14 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.assessments.models import Quiz
+from apps.learning.models import Enrollment
 from apps.organizations.models import Organization, OrganizationMembership
 
-from .models import ContentBlock, Course, CourseMaterialLink, FileContent, TextContent
+from .models import ContentBlock, Course, CourseMaterialLink, CourseRun, FileContent, TextContent
 
 
 class CourseAuthoringViewsTests(TestCase):
@@ -40,7 +42,8 @@ class CourseAuthoringViewsTests(TestCase):
             edit_response,
             reverse("course-detail", args=[course.pk]),
         )
-        self.assertContains(edit_response, "Открыть черновик курса")
+        self.assertContains(edit_response, "Открыть черновик")
+        self.assertContains(edit_response, "Открыть курс для записи")
         self.assertEqual(course.short_description, "Введение")
         self.assertEqual(course.description, "Описание курса")
         self.assertTrue(course.authors.filter(user=self.user, role="owner").exists())
@@ -53,6 +56,104 @@ class CourseAuthoringViewsTests(TestCase):
         course = Course.objects.get(title=title)
         self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
         self.assertEqual(course.slug, "a" * 50)
+
+    def test_author_can_set_schedule_when_creating_and_editing_course(self):
+        response = self.client.post(
+            reverse("course-create"),
+            {
+                "title": "Курс со сроками",
+                "course_start": "2026-09-01",
+                "course_end": "2026-12-25",
+            },
+        )
+
+        course = Course.objects.get(title="Курс со сроками")
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        run = CourseRun.objects.get(course=course)
+        self.assertEqual(run.status, CourseRun.Status.PLANNED)
+        self.assertEqual(timezone.localtime(run.start_at).date().isoformat(), "2026-09-01")
+        self.assertEqual(timezone.localtime(run.end_at).date().isoformat(), "2026-12-25")
+
+        response = self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {
+                "action": "save_schedule",
+                "course_start": "2026-09-15",
+                "course_end": "2027-01-15",
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        run.refresh_from_db()
+        self.assertEqual(timezone.localtime(run.start_at).date().isoformat(), "2026-09-15")
+        self.assertEqual(timezone.localtime(run.end_at).date().isoformat(), "2027-01-15")
+
+    def test_author_sees_own_draft_in_catalog(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Черновик фармакологии",
+            slug="pharmacology-draft",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+
+        response = self.client.get(reverse("course-catalog"))
+
+        self.assertContains(response, "Черновики курсов")
+        self.assertContains(response, "Черновик фармакологии")
+        self.assertContains(response, reverse("course-edit", args=[course.pk]))
+
+    def test_publishing_course_creates_active_run_visible_to_student(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Открытый курс",
+            slug="open-course",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+
+        response = self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {
+                "action": "save_course",
+                "title": course.title,
+                "status": Course.Status.PUBLISHED,
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        run = CourseRun.objects.get(course=course)
+        self.assertEqual(run.status, CourseRun.Status.ACTIVE)
+        self.assertTrue(run.staff.filter(user=self.user, role="teacher").exists())
+
+        student = User.objects.create_user("student@example.test", "password")
+        self.client.force_login(student)
+        response = self.client.get(reverse("course-catalog"))
+
+        self.assertContains(response, "Открытый курс")
+        self.assertContains(response, reverse("enroll", args=[run.pk]))
+
+    def test_author_can_open_course_and_add_self_as_learner(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Курс преподавателя",
+            slug="teacher-course",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+        edit_url = reverse("course-edit", args=[course.pk])
+
+        response = self.client.post(edit_url, {"action": "open_enrollment"})
+
+        self.assertRedirects(response, edit_url)
+        course.refresh_from_db()
+        self.assertEqual(course.status, Course.Status.PUBLISHED)
+        run = CourseRun.objects.get(course=course, status=CourseRun.Status.ACTIVE)
+
+        response = self.client.post(edit_url, {"action": "enroll_editor"})
+
+        self.assertRedirects(response, edit_url)
+        self.assertTrue(Enrollment.objects.filter(course_run=run, user=self.user).exists())
 
     def test_long_course_slugs_remain_unique(self):
         title = "a" * 255

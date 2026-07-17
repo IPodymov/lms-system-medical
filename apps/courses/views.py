@@ -1,3 +1,5 @@
+from datetime import date, datetime, time, timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -8,6 +10,7 @@ from django.utils.text import slugify
 
 from apps.assessments.models import Question, QuestionOption, Quiz, QuizQuestion
 from apps.assessments.permissions import can_edit_course
+from apps.learning.models import Enrollment
 from apps.learning.services import EnrollmentError, enroll
 from apps.organizations.models import Organization
 
@@ -17,6 +20,7 @@ from .models import (
     CourseAuthor,
     CourseMaterialLink,
     CourseRun,
+    CourseRunStaff,
     CourseSection,
     FileContent,
     Lesson,
@@ -25,13 +29,21 @@ from .models import (
 
 
 def catalog(request):
+    draft_courses = Course.objects.none()
+    if request.user.is_authenticated:
+        draft_courses = (
+            Course.objects.filter(status=Course.Status.DRAFT, authors__user=request.user)
+            .distinct()
+            .order_by("-created_at")
+        )
     return render(
         request,
         "courses/catalog.html",
         {
             "runs": CourseRun.objects.filter(
                 status="active", course__status="published"
-            ).select_related("course")
+            ).select_related("course"),
+            "draft_courses": draft_courses,
         },
     )
 
@@ -109,6 +121,43 @@ def _add_lesson(course, *, section_title, lesson_title, description=""):
     )
 
 
+def _parse_course_dates(request):
+    start_value = request.POST.get("course_start", "")
+    end_value = request.POST.get("course_end", "")
+    if not start_value and not end_value:
+        return None, None
+    if not start_value or not end_value:
+        raise ValueError("Укажите и дату начала, и дату окончания обучения.")
+    try:
+        start_at = timezone.make_aware(datetime.combine(date.fromisoformat(start_value), time.min))
+        end_at = timezone.make_aware(datetime.combine(date.fromisoformat(end_value), time.max))
+    except ValueError as error:
+        raise ValueError("Укажите корректные даты обучения.") from error
+    if end_at <= start_at:
+        raise ValueError("Дата окончания обучения должна быть позже даты начала.")
+    return start_at, end_at
+
+
+def _create_course_run(course, user, *, start_at, end_at, status):
+    run = CourseRun.objects.create(
+        course=course,
+        title=f"{course.title} — основной поток",
+        semester="Открытый",
+        academic_year=f"{start_at.year}/{start_at.year + 1}",
+        start_at=start_at,
+        end_at=end_at,
+        enrollment_start_at=timezone.now(),
+        enrollment_end_at=end_at,
+        status=status,
+    )
+    CourseRunStaff.objects.get_or_create(
+        course_run=run,
+        user=user,
+        defaults={"role": "teacher"},
+    )
+    return run
+
+
 @login_required
 def course_create(request):
     membership = (
@@ -134,6 +183,11 @@ def course_create(request):
         if not title:
             messages.error(request, "Укажите наименование курса.")
             return render(request, "courses/create.html", status=400)
+        try:
+            start_at, end_at = _parse_course_dates(request)
+        except ValueError as error:
+            messages.error(request, str(error))
+            return render(request, "courses/create.html", status=400)
 
         with transaction.atomic():
             course = Course.objects.create(
@@ -146,6 +200,14 @@ def course_create(request):
                 created_by=request.user,
             )
             CourseAuthor.objects.create(course=course, user=request.user, role="owner")
+            if start_at:
+                _create_course_run(
+                    course,
+                    request.user,
+                    start_at=start_at,
+                    end_at=end_at,
+                    status=CourseRun.Status.PLANNED,
+                )
             # Поддерживаем старый API формы создания: старые клиенты могут передать
             # первый материал сразу, хотя основной интерфейс теперь ведёт в конструктор.
             lesson_title = request.POST.get("lesson_title", "").strip()
@@ -206,6 +268,31 @@ def _selected_lesson(course, lesson_id):
     return _course_lesson(course)
 
 
+def _ensure_active_course_run(course, user):
+    """Create one immediately available run when a course is first published."""
+    active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+    if active_run:
+        return active_run
+    now = timezone.now()
+    run = course.runs.filter(status=CourseRun.Status.PLANNED).order_by("created_at").first()
+    if run:
+        run.status = CourseRun.Status.ACTIVE
+        run.enrollment_start_at = min(run.enrollment_start_at, now)
+        run.enrollment_end_at = max(run.enrollment_end_at, now)
+        run.save(update_fields=["status", "enrollment_start_at", "enrollment_end_at"])
+        CourseRunStaff.objects.get_or_create(
+            course_run=run, user=user, defaults={"role": "teacher"}
+        )
+        return run
+    return _create_course_run(
+        course,
+        user,
+        start_at=now,
+        end_at=now + timedelta(days=365),
+        status=CourseRun.Status.ACTIVE,
+    )
+
+
 @login_required
 def course_edit(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
@@ -224,8 +311,64 @@ def course_edit(request, course_id):
                 course.published_at = (
                     timezone.now() if course.status == Course.Status.PUBLISHED else None
                 )
-            course.save()
-            messages.success(request, "Данные курса сохранены.")
+            with transaction.atomic():
+                course.save()
+                if course.status == Course.Status.PUBLISHED:
+                    _ensure_active_course_run(course, request.user)
+            if course.status == Course.Status.PUBLISHED:
+                messages.success(request, "Курс опубликован и открыт для записи слушателей.")
+            else:
+                messages.success(request, "Данные курса сохранены.")
+        elif action == "open_enrollment":
+            with transaction.atomic():
+                course.status = Course.Status.PUBLISHED
+                course.published_at = course.published_at or timezone.now()
+                course.save(update_fields=["status", "published_at"])
+                _ensure_active_course_run(course, request.user)
+            messages.success(request, "Курс открыт для записи всех слушателей.")
+        elif action == "save_schedule":
+            try:
+                start_at, end_at = _parse_course_dates(request)
+            except ValueError as error:
+                messages.error(request, str(error))
+            else:
+                run = (
+                    course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+                    or course.runs.filter(status=CourseRun.Status.PLANNED).first()
+                )
+                if run:
+                    run.start_at = start_at
+                    run.end_at = end_at
+                    run.enrollment_end_at = end_at
+                    run.save(update_fields=["start_at", "end_at", "enrollment_end_at"])
+                else:
+                    _create_course_run(
+                        course,
+                        request.user,
+                        start_at=start_at,
+                        end_at=end_at,
+                        status=CourseRun.Status.PLANNED,
+                    )
+                messages.success(request, "Сроки обучения сохранены.")
+        elif action == "enroll_editor":
+            active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+            if not active_run:
+                messages.error(request, "Сначала откройте курс для записи.")
+            else:
+                is_already_enrolled = Enrollment.objects.filter(
+                    course_run=active_run, user=request.user
+                ).exists()
+                try:
+                    enroll(course_run=active_run, user=request.user)
+                except EnrollmentError as error:
+                    messages.error(request, str(error))
+                else:
+                    message = (
+                        "Вы уже добавлены в этот курс."
+                        if is_already_enrolled
+                        else "Вы добавлены в этот курс."
+                    )
+                    messages.success(request, message)
         elif action == "add_lesson":
             section_title = request.POST.get("section_title", "").strip()
             lesson_title = request.POST.get("lesson_title", "").strip()
@@ -366,6 +509,8 @@ def course_edit(request, course_id):
         .select_related("lesson__section", "file_content", "quiz")
         .order_by("lesson__section__position", "lesson__position", "position")
     )
+    active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+    schedule_run = active_run or course.runs.filter(status=CourseRun.Status.PLANNED).first()
     return render(
         request,
         "courses/edit.html",
@@ -375,6 +520,12 @@ def course_edit(request, course_id):
             "lessons": Lesson.objects.filter(section__course=course).select_related("section"),
             "sections": course.sections.prefetch_related("lessons__blocks"),
             "material_links": course.material_links.all(),
+            "active_run": active_run,
+            "schedule_run": schedule_run,
+            "is_editor_enrolled": (
+                active_run is not None
+                and Enrollment.objects.filter(course_run=active_run, user=request.user).exists()
+            ),
         },
     )
 

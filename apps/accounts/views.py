@@ -3,9 +3,11 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import LoginView
+from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.text import slugify
 
 from apps.courses.models import CourseRunStaff
@@ -14,6 +16,14 @@ from apps.organizations.models import Organization, OrganizationMembership
 
 from .forms import ProfileForm, RegistrationForm, UserPasswordForm
 from .models import User
+
+ADMIN_DOCUMENTATION_SALT = "medical-lms.admin-documentation"
+ADMIN_DOCUMENTATION_MAX_AGE = 60 * 60 * 24
+
+
+def _admin_documentation_url(request):
+    token = signing.dumps(str(request.user.pk), salt=ADMIN_DOCUMENTATION_SALT, compress=True)
+    return reverse("admin-documentation", args=[token])
 
 
 class Login(LoginView):
@@ -144,6 +154,7 @@ def admin_dashboard(request):
                 "institution_types": Organization.InstitutionType.choices,
                 "roles": OrganizationMembership.Role.choices,
                 "organizations": [],
+                "admin_documentation_url": _admin_documentation_url(request),
             },
         )
     if request.user.is_superuser:
@@ -192,8 +203,28 @@ def admin_dashboard(request):
             "institution_types": Organization.InstitutionType.choices,
             "roles": OrganizationMembership.Role.choices,
             "organizations": managed_organizations,
+            "admin_documentation_url": (
+                _admin_documentation_url(request) if request.user.is_superuser else None
+            ),
         },
     )
+
+
+@login_required
+def admin_documentation(request, token):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    try:
+        user_id = signing.loads(
+            token,
+            salt=ADMIN_DOCUMENTATION_SALT,
+            max_age=ADMIN_DOCUMENTATION_MAX_AGE,
+        )
+    except signing.BadSignature as error:
+        raise PermissionDenied from error
+    if user_id != str(request.user.pk):
+        raise PermissionDenied
+    return render(request, "accounts/admin_documentation.html")
 
 
 @login_required

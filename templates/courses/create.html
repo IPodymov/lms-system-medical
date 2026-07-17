@@ -6,6 +6,7 @@
   <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}"></label>
   <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}"></label>
   <label>Подробное описание<textarea name="description" rows="6">{{ request.POST.description }}</textarea></label>
+  <fieldset><legend>Сроки обучения</legend><p>Необязательно: их можно изменить в конструкторе курса.</p><label>Дата начала<input type="date" name="course_start" value="{{ request.POST.course_start }}"></label><label>Дата окончания<input type="date" name="course_end" value="{{ request.POST.course_end }}"></label></fieldset>
   <label>Обложка (необязательно)<input type="file" name="cover" accept="image/*"></label>
   <button>Продолжить к программе</button>
 </form></div>

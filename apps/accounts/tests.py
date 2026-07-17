@@ -36,3 +36,26 @@ class RegistrationViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Пользователь с таким email уже зарегистрирован.")
+
+
+class AdminDocumentationTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("admin@example.test", "safe-password-123")
+        self.other_admin = User.objects.create_superuser(
+            "second-admin@example.test", "safe-password-123"
+        )
+
+    def test_signed_documentation_url_is_available_to_its_admin_only(self):
+        self.client.force_login(self.admin)
+        dashboard = self.client.get(reverse("admin-dashboard"))
+        documentation_url = dashboard.context["admin_documentation_url"]
+
+        response = self.client.get(documentation_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Документация администратора")
+
+        self.client.force_login(self.other_admin)
+        response = self.client.get(documentation_url)
+
+        self.assertEqual(response.status_code, 403)
