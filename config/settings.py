@@ -4,10 +4,17 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+# Process variables always take priority. Locally, `.env.local` overrides `.env`;
+# Vercel receives values through its environment and never loads local overrides.
+environment_values = dict(dotenv_values(BASE_DIR / ".env"))
+if not os.getenv("VERCEL"):
+    environment_values.update(dotenv_values(BASE_DIR / ".env.local"))
+for key, value in environment_values.items():
+    if value is not None:
+        os.environ.setdefault(key, value)
 
 
 def database_config(database_url: str) -> dict[str, Any]:
