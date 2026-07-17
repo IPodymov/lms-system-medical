@@ -157,3 +157,16 @@ class FileContent(models.Model):
     )
     file = models.FileField(upload_to="course_materials/")
     description = models.TextField(blank=True)
+
+
+class CourseMaterialLink(TimeStampedModel):
+    """Ссылка на внешний дополнительный материал для всего курса."""
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="material_links")
+    title = models.CharField(max_length=255)
+    url = models.URLField()
+    description = models.TextField(blank=True)
+    position = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["position", "created_at"]

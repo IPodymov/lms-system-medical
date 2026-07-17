@@ -1,19 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Новый курс — МедЛМС{% endblock %}
 {% block content %}
-<div class="form-page"><h1>Создать курс</h1><p>Заполните основную информацию. Материалы и тесты можно добавить на следующем шаге.</p>
+<div class="form-page"><p class="eyebrow">Шаг 1 из 2</p><h1>Создать курс</h1><p>Задайте название и описание. На следующем шаге соберёте программу из тем, материалов и тестов.</p>
 <form method="post" enctype="multipart/form-data" class="form-card">{% csrf_token %}
   <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}"></label>
   <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}"></label>
   <label>Подробное описание<textarea name="description" rows="6">{{ request.POST.description }}</textarea></label>
   <label>Обложка (необязательно)<input type="file" name="cover" accept="image/*"></label>
-  <fieldset><legend>Первая тема (необязательно)</legend>
-    <p>Можно сразу добавить тему лекции и дополнительный материал — после создания они появятся в программе курса.</p>
-    <label>Название темы<input name="lesson_title" value="{{ request.POST.lesson_title }}" placeholder="Например, Введение в предмет"></label>
-    <label>Текст лекции<textarea name="lesson_content" rows="6">{{ request.POST.lesson_content }}</textarea></label>
-    <label>Название дополнительного материала<input name="material_title" value="{{ request.POST.material_title }}" placeholder="Например, Презентация к лекции"></label>
-    <label>Файл материала<input type="file" name="material_file"></label>
-  </fieldset>
-  <button>Создать курс</button>
+  <button>Продолжить к программе</button>
 </form></div>
 {% endblock %}

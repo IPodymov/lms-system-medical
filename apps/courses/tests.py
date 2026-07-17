@@ -6,7 +6,7 @@ from apps.accounts.models import User
 from apps.assessments.models import Quiz
 from apps.organizations.models import Organization, OrganizationMembership
 
-from .models import ContentBlock, Course, FileContent, TextContent
+from .models import ContentBlock, Course, CourseMaterialLink, FileContent, TextContent
 
 
 class CourseAuthoringViewsTests(TestCase):
@@ -36,6 +36,11 @@ class CourseAuthoringViewsTests(TestCase):
         self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
         edit_response = self.client.get(reverse("course-edit", args=[course.pk]))
         self.assertEqual(edit_response.status_code, 200)
+        self.assertContains(
+            edit_response,
+            reverse("course-detail", args=[course.pk]),
+        )
+        self.assertContains(edit_response, "Открыть черновик курса")
         self.assertEqual(course.short_description, "Введение")
         self.assertEqual(course.description, "Описание курса")
         self.assertTrue(course.authors.filter(user=self.user, role="owner").exists())
@@ -147,3 +152,44 @@ class CourseAuthoringViewsTests(TestCase):
         self.assertTrue(ContentBlock.objects.filter(type="file").exists())
         quiz = Quiz.objects.get(title="Проверка")
         self.assertTrue(quiz.quiz_questions.get().question.options.get(position=1).is_correct)
+
+    def test_editor_can_add_external_material_link(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+
+        response = self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {
+                "action": "add_material_link",
+                "link_title": "Клинические рекомендации",
+                "link_url": "https://example.test/guidelines",
+                "link_description": "Актуальная редакция",
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertTrue(
+            CourseMaterialLink.objects.filter(
+                course=course, title="Клинические рекомендации"
+            ).exists()
+        )
+
+    def test_author_can_create_quiz_on_separate_page(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+        response = self.client.post(
+            reverse("quiz-create", args=[course.pk]),
+            {
+                "quiz_title": "Тест по теме",
+                "question_text": "Какой ответ верный?",
+                "option": ["Первый", "Второй"],
+                "correct_option": "1",
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertTrue(Quiz.objects.filter(title="Тест по теме").exists())

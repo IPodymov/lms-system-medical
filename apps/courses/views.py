@@ -15,6 +15,7 @@ from .models import (
     ContentBlock,
     Course,
     CourseAuthor,
+    CourseMaterialLink,
     CourseRun,
     CourseSection,
     FileContent,
@@ -145,10 +146,11 @@ def course_create(request):
                 created_by=request.user,
             )
             CourseAuthor.objects.create(course=course, user=request.user, role="owner")
+            # Поддерживаем старый API формы создания: старые клиенты могут передать
+            # первый материал сразу, хотя основной интерфейс теперь ведёт в конструктор.
             lesson_title = request.POST.get("lesson_title", "").strip()
             lesson_content = request.POST.get("lesson_content", "").strip()
             material = request.FILES.get("material_file")
-            material_title = request.POST.get("material_title", "").strip()
             if lesson_title or lesson_content or material:
                 lesson = _add_lesson(
                     course,
@@ -167,11 +169,11 @@ def course_create(request):
                     block = ContentBlock.objects.create(
                         lesson=lesson,
                         type=ContentBlock.Type.FILE,
-                        title=material_title or material.name,
+                        title=request.POST.get("material_title", "").strip() or material.name,
                         position=lesson.blocks.count() + 1,
                     )
                     FileContent.objects.create(content_block=block, file=material)
-        messages.success(request, "Курс создан. Добавьте материалы и тесты.")
+        messages.success(request, "Курс создан. Соберите программу из тем и блоков.")
         return redirect("course-edit", course.pk)
     return render(request, "courses/create.html")
 
@@ -237,6 +239,19 @@ def course_edit(request, course_id):
                     description=request.POST.get("lesson_description", "").strip(),
                 )
                 messages.success(request, "Тема добавлена.")
+        elif action == "add_section":
+            section_title = request.POST.get("section_title", "").strip()
+            if not section_title:
+                messages.error(request, "Укажите название раздела.")
+            else:
+                CourseSection.objects.create(
+                    course=course,
+                    title=section_title,
+                    description=request.POST.get("section_description", "").strip(),
+                    position=course.sections.count() + 1,
+                    is_published=True,
+                )
+                messages.success(request, "Раздел добавлен.")
         elif action == "add_material":
             file = request.FILES.get("file")
             title = request.POST.get("material_title", "").strip()
@@ -271,11 +286,24 @@ def course_edit(request, course_id):
                 )
                 TextContent.objects.create(content_block=block, body=body)
                 messages.success(request, "Текст лекции добавлен.")
+        elif action == "add_material_link":
+            title = request.POST.get("link_title", "").strip()
+            url = request.POST.get("link_url", "").strip()
+            if not title or not url:
+                messages.error(request, "Укажите название и ссылку на дополнительный материал.")
+            else:
+                CourseMaterialLink.objects.create(
+                    course=course,
+                    title=title,
+                    url=url,
+                    description=request.POST.get("link_description", "").strip(),
+                    position=course.material_links.count() + 1,
+                )
+                messages.success(request, "Ссылка на дополнительный материал добавлена.")
         elif action == "add_quiz":
-            quiz_title, text = (
-                request.POST.get("quiz_title", "").strip(),
-                request.POST.get("question_text", "").strip(),
-            )
+            # Совместимость с прежней формой редактора и API-клиентами.
+            quiz_title = request.POST.get("quiz_title", "").strip()
+            text = request.POST.get("question_text", "").strip()
             options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
             try:
                 correct = int(request.POST.get("correct_option", ""))
@@ -304,18 +332,34 @@ def course_edit(request, course_id):
                         type=Question.Type.SINGLE,
                         text=text,
                     )
-                    for position, option in enumerate(options):
+                    for position, option in enumerate(options, start=1):
                         QuestionOption.objects.create(
                             question=question,
                             text=option,
-                            position=position + 1,
-                            is_correct=position == correct,
+                            position=position,
+                            is_correct=position - 1 == correct,
                         )
                     QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
-                messages.success(
-                    request,
-                    "Тест добавлен. Правильный ответ сохранён только для проверки.",
+                messages.success(request, "Тест добавлен в программу курса.")
+        elif action == "reorder_blocks":
+            block_ids = request.POST.getlist("block_id")
+            blocks = {
+                str(block.pk): block
+                for block in ContentBlock.objects.filter(
+                    pk__in=block_ids, lesson__section__course=course
                 )
+            }
+            # First move positions outside their current range to avoid a transient
+            # unique-constraint clash when two neighbouring blocks are swapped.
+            for block in blocks.values():
+                block.position += len(block_ids) + 1000
+                block.save(update_fields=["position"])
+            for position, block_id in enumerate(block_ids, start=1):
+                block = blocks.get(block_id)
+                if block:
+                    block.position = position
+                    block.save(update_fields=["position"])
+            messages.success(request, "Порядок блоков сохранён.")
         return redirect("course-edit", course.pk)
     blocks = (
         ContentBlock.objects.filter(lesson__section__course=course)
@@ -328,6 +372,62 @@ def course_edit(request, course_id):
         {
             "course": course,
             "blocks": blocks,
-            "lessons": Lesson.objects.filter(section__course=course),
+            "lessons": Lesson.objects.filter(section__course=course).select_related("section"),
+            "sections": course.sections.prefetch_related("lessons__blocks"),
+            "material_links": course.material_links.all(),
         },
+    )
+
+
+@login_required
+def quiz_create(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    if not can_edit_course(request.user, course):
+        raise PermissionDenied
+    lessons = Lesson.objects.filter(section__course=course).select_related("section")
+    selected_lesson = _selected_lesson(course, request.GET.get("lesson_id"))
+    if request.method == "POST":
+        quiz_title = request.POST.get("quiz_title", "").strip()
+        text = request.POST.get("question_text", "").strip()
+        options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
+        try:
+            correct = int(request.POST.get("correct_option", ""))
+        except ValueError:
+            correct = -1
+        lesson = _selected_lesson(course, request.POST.get("lesson_id"))
+        if not quiz_title or not text or len(options) < 2 or correct not in range(len(options)):
+            messages.error(
+                request,
+                "Заполните тест, минимум два варианта и отметьте правильный ответ.",
+            )
+        else:
+            with transaction.atomic():
+                block = ContentBlock.objects.create(
+                    lesson=lesson,
+                    type=ContentBlock.Type.QUIZ,
+                    title=quiz_title,
+                    position=lesson.blocks.count() + 1,
+                )
+                quiz = Quiz.objects.create(content_block=block, title=quiz_title, passing_score=100)
+                question = Question.objects.create(
+                    organization=course.organization,
+                    author=request.user,
+                    type=Question.Type.SINGLE,
+                    text=text,
+                )
+                for position, option in enumerate(options, start=1):
+                    QuestionOption.objects.create(
+                        question=question,
+                        text=option,
+                        position=position,
+                        is_correct=position - 1 == correct,
+                    )
+                QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
+            messages.success(request, "Тест добавлен в программу курса.")
+            return redirect("course-edit", course.pk)
+    return render(
+        request,
+        "courses/quiz_create.html",
+        {"course": course, "lessons": lessons, "selected_lesson": selected_lesson},
+        status=400 if request.method == "POST" else 200,
     )
