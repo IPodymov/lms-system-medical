@@ -43,7 +43,7 @@ class MeView(APIView):
 class CourseCatalogView(generics.ListAPIView):
     serializer_class = CourseRunSerializer
     queryset = CourseRun.objects.filter(status="active", course__status="published").select_related(
-        "course"
+        "course__organization"
     )
 
 
@@ -52,7 +52,7 @@ class EnrollmentView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return Enrollment.objects.filter(user=self.request.user).select_related(
-            "course_run__course"
+            "course_run__course__organization"
         )
 
     def create(self, request, *args, **kwargs):
@@ -71,7 +71,7 @@ class ProgressView(generics.ListAPIView):
 
     def get_queryset(self):
         return Enrollment.objects.filter(user=self.request.user).select_related(
-            "course_run__course"
+            "course_run__course__organization"
         )
 
 

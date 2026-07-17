@@ -5,9 +5,18 @@ from apps.accounts.models import TimeStampedModel, UUIDModel
 
 
 class Organization(UUIDModel, TimeStampedModel):
+    class InstitutionType(models.TextChoices):
+        UNIVERSITY = "university", "ВУЗ"
+        COLLEGE = "college", "Колледж"
+
     name = models.CharField(max_length=255)
     short_name = models.CharField(max_length=80)
     slug = models.SlugField(unique=True)
+    institution_type = models.CharField(
+        max_length=16,
+        choices=InstitutionType,
+        default=InstitutionType.UNIVERSITY,
+    )
     is_active = models.BooleanField(default=True)
     settings = models.JSONField(default=dict, blank=True)
 

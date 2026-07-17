@@ -3,9 +3,10 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import LoginView
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.text import slugify
 
 from apps.courses.models import CourseRunStaff
 from apps.learning.models import Enrollment
@@ -113,14 +114,38 @@ def _can_manage_users(user) -> bool:
     )
 
 
+def _organization_slug(name: str) -> str:
+    max_length = Organization._meta.get_field("slug").max_length or 50
+    base_slug = (slugify(name) or "organization")[:max_length]
+    slug, index = base_slug, 2
+    while Organization.objects.filter(slug=slug).exists():
+        suffix = f"-{index}"
+        slug = f"{base_slug[: max_length - len(suffix)]}{suffix}"
+        index += 1
+    return slug
+
+
 @login_required
 def admin_dashboard(request):
     memberships = _managed_memberships(request.user)
     managed_organizations = _managed_organizations(request.user)
     if not managed_organizations.exists():
-        from django.core.exceptions import PermissionDenied
-
-        raise PermissionDenied
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        return render(
+            request,
+            "accounts/admin_dashboard.html",
+            {
+                "memberships": memberships,
+                "progress": [],
+                "metrics": {"users": 0, "students": 0, "average_progress": 0, "completed": 0},
+                "can_manage_users": False,
+                "can_create_organizations": True,
+                "institution_types": Organization.InstitutionType.choices,
+                "roles": OrganizationMembership.Role.choices,
+                "organizations": [],
+            },
+        )
     if request.user.is_superuser:
         # Console-created users have no membership. Make them visible and manageable in the
         # first active organization, without affecting existing roles.
@@ -132,6 +157,11 @@ def admin_dashboard(request):
                     organization=default_organization,
                     defaults={"role": OrganizationMembership.Role.STUDENT},
                 )
+            OrganizationMembership.objects.update_or_create(
+                user=request.user,
+                organization=default_organization,
+                defaults={"role": OrganizationMembership.Role.SYSTEM_ADMIN, "status": "active"},
+            )
             memberships = _managed_memberships(request.user)
     enrollments = Enrollment.objects.filter(
         course_run__course__organization__in=managed_organizations
@@ -158,6 +188,8 @@ def admin_dashboard(request):
                 "completed": enrollments.filter(status="completed").count(),
             },
             "can_manage_users": _can_manage_users(request.user),
+            "can_create_organizations": request.user.is_superuser,
+            "institution_types": Organization.InstitutionType.choices,
             "roles": OrganizationMembership.Role.choices,
             "organizations": managed_organizations,
         },
@@ -165,10 +197,35 @@ def admin_dashboard(request):
 
 
 @login_required
+def add_organization(request):
+    if request.method != "POST" or not request.user.is_superuser:
+        raise PermissionDenied
+
+    name = request.POST.get("name", "").strip()
+    short_name = request.POST.get("short_name", "").strip()
+    institution_type = request.POST.get("institution_type", "")
+    if not name or not short_name or institution_type not in Organization.InstitutionType.values:
+        messages.error(request, "Укажите название, сокращение и тип организации.")
+        return redirect("admin-dashboard")
+
+    organization = Organization.objects.create(
+        name=name,
+        short_name=short_name,
+        slug=_organization_slug(name),
+        institution_type=institution_type,
+    )
+    OrganizationMembership.objects.update_or_create(
+        user=request.user,
+        organization=organization,
+        defaults={"role": OrganizationMembership.Role.SYSTEM_ADMIN, "status": "active"},
+    )
+    messages.success(request, "Организация создана. Теперь можно создавать и редактировать курсы.")
+    return redirect("admin-dashboard")
+
+
+@login_required
 def manage_user_role(request, membership_id):
     if request.method != "POST" or not _can_manage_users(request.user):
-        from django.core.exceptions import PermissionDenied
-
         raise PermissionDenied
     membership = get_object_or_404(_managed_memberships(request.user), pk=membership_id)
     role = request.POST.get("role")
@@ -182,8 +239,6 @@ def manage_user_role(request, membership_id):
 @login_required
 def add_user(request):
     if request.method != "POST" or not _can_manage_users(request.user):
-        from django.core.exceptions import PermissionDenied
-
         raise PermissionDenied
     email = request.POST.get("email", "").strip().lower()
     password = request.POST.get("password", "")

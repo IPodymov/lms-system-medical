@@ -8,6 +8,15 @@ from apps.notifications.models import Notification
 
 class CourseRunSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source="course.title", read_only=True)
+    organization_id = serializers.UUIDField(
+        source="course.organization_id", read_only=True
+    )
+    organization_name = serializers.CharField(
+        source="course.organization.name", read_only=True
+    )
+    organization_type = serializers.CharField(
+        source="course.organization.institution_type", read_only=True
+    )
 
     class Meta:
         model = CourseRun
@@ -15,6 +24,9 @@ class CourseRunSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "course_title",
+            "organization_id",
+            "organization_name",
+            "organization_type",
             "semester",
             "academic_year",
             "start_at",
@@ -28,13 +40,28 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Enrollment
-        fields = ["id", "course_run", "status", "progress_percent", "final_score", "enrolled_at"]
+        fields = [
+            "id",
+            "course_run",
+            "status",
+            "progress_percent",
+            "final_score",
+            "enrolled_at",
+        ]
 
 
 class AttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizAttempt
-        fields = ["id", "attempt_number", "status", "score", "max_score", "passed", "submitted_at"]
+        fields = [
+            "id",
+            "attempt_number",
+            "status",
+            "score",
+            "max_score",
+            "passed",
+            "submitted_at",
+        ]
 
 
 class NotificationSerializer(serializers.ModelSerializer):
