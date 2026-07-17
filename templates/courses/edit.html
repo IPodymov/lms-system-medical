@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Редактирование — {{ course.title }}{% endblock %}
+{% block content %}
+<h1>Редактирование курса</h1>
+<div class="editor-grid">
+<section class="card"><h2>О курсе</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="save_course">
+<label>Наименование<input name="title" required value="{{ course.title }}"></label><label>Краткое описание<input name="short_description" value="{{ course.short_description }}"></label><label>Описание<textarea name="description" rows="5">{{ course.description }}</textarea></label><label>Обложка<input type="file" name="cover" accept="image/*"></label><label>Статус<select name="status">{% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>Сохранить</button></form></section>
+<section class="card"><h2>Загрузить материал</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><label>Название<input name="material_title" required></label><label>Описание<textarea name="material_description" rows="3"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Добавить материал</button></form></section>
+<section class="card"><h2>Добавить тест</h2><p>Правильный ответ виден только автору и используется при проверке.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_quiz"><label>Название теста<input name="quiz_title" required></label><label>Вопрос<textarea name="question_text" rows="3" required></textarea></label>{% for i in '0123' %}<label>Вариант {{ forloop.counter }}<input name="option" required></label>{% endfor %}<label>Правильный вариант<select name="correct_option">{% for i in '0123' %}<option value="{{ i }}">{{ forloop.counter }}</option>{% endfor %}</select></label><button>Добавить тест</button></form></section>
+</div>
+<section class="card"><h2>Содержание</h2><ul class="content-list">{% for block in blocks %}<li><strong>{{ block.get_type_display }}:</strong> {{ block.title }} {% if block.file_content %}<a href="{{ block.file_content.file.url }}">Открыть файл</a>{% endif %}{% if block.quiz %}<span>— 1 вопрос</span>{% endif %}</li>{% empty %}<li>Материалов и тестов пока нет.</li>{% endfor %}</ul></section>
+{% endblock %}

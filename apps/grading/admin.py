@@ -1,3 +1,5 @@
 from django.contrib import admin
-from .models import GradebookItem,Grade
-admin.site.register([GradebookItem,Grade])
+
+from .models import Grade, GradebookItem
+
+admin.site.register([GradebookItem, Grade])

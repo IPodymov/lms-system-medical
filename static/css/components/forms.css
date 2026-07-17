@@ -15,6 +15,24 @@ input {
   border-radius: 5px;
 }
 
+textarea, select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  font: inherit;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 5px;
+}
+
+label { display: block; margin: 12px 0; }
+fieldset { margin: 16px 0; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.choice { margin: 8px 0; }
+.choice input { display: inline; margin: 0 7px 0 0; }
+.form-card { max-width: 720px; padding: 20px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.form-page { max-width: 720px; }
+
 input:focus,
 button:focus-visible,
 a:focus-visible {

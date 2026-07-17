@@ -1,1 +1,12 @@
-{% extends 'base.html' %}{% block content %}<h1>Создать курс</h1><form method="post">{% csrf_token %}<label>Название <input name="title" required></label><button>Создать</button></form>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Новый курс — МедЛМС{% endblock %}
+{% block content %}
+<div class="form-page"><h1>Создать курс</h1><p>Заполните основную информацию. Материалы и тесты можно добавить на следующем шаге.</p>
+<form method="post" enctype="multipart/form-data" class="form-card">{% csrf_token %}
+  <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}"></label>
+  <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}"></label>
+  <label>Подробное описание<textarea name="description" rows="6">{{ request.POST.description }}</textarea></label>
+  <label>Обложка (необязательно)<input type="file" name="cover" accept="image/*"></label>
+  <button>Создать курс</button>
+</form></div>
+{% endblock %}

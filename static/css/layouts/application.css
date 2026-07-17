@@ -14,3 +14,12 @@ main {
   max-width: 360px;
   margin: 80px auto;
 }
+
+.editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.editor-grid .card { margin: 0; }
+.learning-block { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid var(--color-border); }
+.learning-block form { flex: 0 0 auto; }
+.content-list { padding-left: 20px; }
+.content-list li { margin: 10px 0; }
+.button-link { display: inline-block; padding: 9px 14px; color: var(--color-primary-contrast); background: var(--color-primary); border-radius: var(--radius-sm); text-decoration: none; }
+.course-cover { display: block; width: 100%; max-width: 640px; max-height: 320px; object-fit: cover; margin-bottom: 18px; border-radius: var(--radius-md); }

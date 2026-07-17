@@ -1,0 +1,2 @@
+{% extends 'base.html' %}
+{% block content %}<h1>{{ quiz.title }}</h1><p>{{ quiz.description }}</p><form method="post" class="form-card">{% csrf_token %}{% for item in questions %}<fieldset><legend>{{ forloop.counter }}. {{ item.question.text }}</legend>{% for option in item.question.options.all %}<label class="choice"><input type="radio" name="question_{{ item.question.id }}" value="{{ option.id }}" required> {{ option.text }}</label>{% endfor %}</fieldset>{% endfor %}<button>Завершить тест</button></form>{% endblock %}
