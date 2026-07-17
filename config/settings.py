@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,9 +33,14 @@ def database_config(database_url: str) -> dict[str, Any]:
     return config
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-local-development-key")
+IS_VERCEL = bool(os.getenv("VERCEL"))
 IS_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
-DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_RAILWAY
+IS_DEPLOYMENT = IS_VERCEL or IS_RAILWAY
+_configured_secret_key = os.getenv("DJANGO_SECRET_KEY")
+if IS_DEPLOYMENT and not _configured_secret_key:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY is required on deployed environments.")
+SECRET_KEY = _configured_secret_key or "unsafe-local-development-key"
+DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_DEPLOYMENT
 _configured_admin_url = os.getenv("DJANGO_ADMIN_URL", "").strip("/")
 # Keep the familiar URL during local development. In production, including Railway,
 # the admin is deliberately unavailable until a private URL is configured.
@@ -42,6 +48,8 @@ ADMIN_URL = "admin/" if DEBUG else f"{_configured_admin_url}/" if _configured_ad
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
 if railway_domain := os.getenv("RAILWAY_PUBLIC_DOMAIN"):
     ALLOWED_HOSTS.append(railway_domain)
+if vercel_domain := os.getenv("VERCEL_URL"):
+    ALLOWED_HOSTS.append(vercel_domain)
 ALLOWED_HOSTS = list(dict.fromkeys(host.strip() for host in ALLOWED_HOSTS if host.strip()))
 
 CSRF_TRUSTED_ORIGINS = [
@@ -49,6 +57,8 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 if railway_domain:
     CSRF_TRUSTED_ORIGINS.append(f"https://{railway_domain}")
+if vercel_domain:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_domain}")
 CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -146,3 +156,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {"TITLE": "University LMS API", "VERSION": "0.1.0"}
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+# Vercel Functions cannot host a separate Celery worker. Execute short local tasks
+# during the request there; production queue workers remain unchanged elsewhere.
+CELERY_TASK_ALWAYS_EAGER = IS_VERCEL
+CELERY_TASK_EAGER_PROPAGATES = IS_VERCEL
