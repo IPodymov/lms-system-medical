@@ -21,15 +21,12 @@
         ><span class="brand-mark">M</span><span>МедЛМС</span></a
       >{% if user.is_authenticated %}
       <nav class="main-nav" aria-label="Основная навигация">
-        <a href="/courses/mine/">Мои курсы</a>
-        <a href="/courses/catalog/">Каталог</a>
-        <a class="nav-create" href="/courses/create/">Создать курс</a>
-        {% if can_open_management %}<a href="{% url 'admin-dashboard' %}">Управление</a>{% endif %}
-        <a class="nav-counter-link" href="{% url 'direct-messages' %}">Сообщения{% if unread_messages_count %}<span class="nav-badge" aria-label="Непрочитанные сообщения: {{ unread_messages_count }}">{{ unread_messages_count }}</span>{% endif %}</a>
-        <a class="nav-counter-link" href="/notifications/">Уведомления{% if unread_notifications_count %}<span class="nav-badge" aria-label="Непрочитанные уведомления: {{ unread_notifications_count }}">{{ unread_notifications_count }}</span>{% endif %}</a>
+        <div class="nav-group" aria-label="Обучение"><span class="nav-group-label">Обучение</span><div class="nav-links"><a href="/courses/mine/">Мои курсы</a><a href="/courses/catalog/">Каталог</a></div></div>
+        {% if can_create_course or can_open_management %}<div class="nav-group nav-group-teaching" aria-label="Преподавание"><span class="nav-group-label">Преподавание</span><div class="nav-links">{% if can_create_course %}<a class="nav-create" href="/courses/create/">Создать курс</a>{% endif %}{% if can_open_management %}<a href="{% url 'admin-dashboard' %}">Управление</a>{% endif %}</div></div>{% endif %}
+        <div class="nav-group nav-group-communication" aria-label="Связь"><span class="nav-group-label">Связь</span><div class="nav-links"><a class="nav-counter-link" href="{% url 'direct-messages' %}">Сообщения{% if unread_messages_count %}<span class="nav-badge" aria-label="Непрочитанные сообщения: {{ unread_messages_count }}">{{ unread_messages_count }}</span>{% endif %}</a><a class="nav-counter-link" href="/notifications/">Уведомления{% if unread_notifications_count %}<span class="nav-badge" aria-label="Непрочитанные уведомления: {{ unread_notifications_count }}">{{ unread_notifications_count }}</span>{% endif %}</a></div></div>
         <details class="profile-menu">
           <summary aria-label="Открыть меню профиля">
-            <span class="profile-menu-name">{{ user.get_full_name|default:user.email }}</span>
+            <span class="nav-avatar" aria-hidden="true">{{ user.get_full_name|default:user.email|first|upper }}</span><span class="profile-menu-name">{{ user.get_full_name|default:user.username|default:user.email }}</span>
             <span class="profile-menu-chevron" aria-hidden="true">⌄</span>
           </summary>
           <div class="profile-menu-panel">

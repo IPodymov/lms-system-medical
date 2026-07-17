@@ -11,6 +11,7 @@ def navigation_context(request: HttpRequest) -> dict[str, int]:
             "unread_notifications_count": 0,
             "unread_messages_count": 0,
             "can_open_management": False,
+            "can_create_course": False,
         }
 
     from apps.messaging.models import DirectMessage
@@ -23,6 +24,11 @@ def navigation_context(request: HttpRequest) -> dict[str, int]:
         "can_open_management": request.user.is_superuser
         or request.user.memberships.filter(
             role__in=["organization_admin", "teacher"], status="active"
+        ).exists(),
+        "can_create_course": request.user.is_superuser
+        or request.user.memberships.filter(
+            role__in=["teacher", "assistant", "organization_admin", "system_admin"],
+            status="active",
         ).exists(),
     }
 

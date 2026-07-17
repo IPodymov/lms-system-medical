@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.organizations.models import Organization, OrganizationMembership
+
 from .models import User
 
 
@@ -59,3 +61,36 @@ class AdminDocumentationTests(TestCase):
         response = self.client.get(documentation_url)
 
         self.assertEqual(response.status_code, 403)
+
+
+class NavigationTests(TestCase):
+    def test_student_does_not_see_course_creation_and_full_name_includes_patronymic(self):
+        student = User.objects.create_user(
+            "student@example.test",
+            "safe-password-123",
+            first_name="Иван",
+            last_name="Петров",
+            middle_name="Сергеевич",
+        )
+        self.client.force_login(student)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertNotContains(response, 'href="/courses/create/"')
+        self.assertContains(response, "Петров Иван Сергеевич")
+
+    def test_teacher_sees_course_creation(self):
+        teacher = User.objects.create_user("teacher@example.test", "safe-password-123")
+        organization = Organization.objects.create(
+            name="Медицинский университет", short_name="МУ", slug="medical-university"
+        )
+        OrganizationMembership.objects.create(
+            user=teacher,
+            organization=organization,
+            role=OrganizationMembership.Role.TEACHER,
+        )
+        self.client.force_login(teacher)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertContains(response, 'href="/courses/create/"')

@@ -41,20 +41,17 @@ def database_config(database_url: str) -> dict[str, Any]:
 
 
 IS_VERCEL = bool(os.getenv("VERCEL"))
-IS_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT_ID"))
-IS_DEPLOYMENT = IS_VERCEL or IS_RAILWAY
+IS_DEPLOYMENT = IS_VERCEL
 _configured_secret_key = os.getenv("DJANGO_SECRET_KEY")
 if IS_DEPLOYMENT and not _configured_secret_key:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY is required on deployed environments.")
 SECRET_KEY = _configured_secret_key or "unsafe-local-development-key"
 DEBUG = os.getenv("DEBUG", "1") == "1" and not IS_DEPLOYMENT
 _configured_admin_url = os.getenv("DJANGO_ADMIN_URL", "").strip("/")
-# Keep the familiar URL during local development. In production, including Railway,
-# the admin is deliberately unavailable until a private URL is configured.
+# Keep the familiar URL during local development. On Vercel, the admin is
+# deliberately unavailable until a private URL is configured.
 ADMIN_URL = "admin/" if DEBUG else f"{_configured_admin_url}/" if _configured_admin_url else ""
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
-if railway_domain := os.getenv("RAILWAY_PUBLIC_DOMAIN"):
-    ALLOWED_HOSTS.append(railway_domain)
 if vercel_domain := os.getenv("VERCEL_URL"):
     ALLOWED_HOSTS.append(vercel_domain)
 ALLOWED_HOSTS = list(dict.fromkeys(host.strip() for host in ALLOWED_HOSTS if host.strip()))
@@ -62,8 +59,6 @@ ALLOWED_HOSTS = list(dict.fromkeys(host.strip() for host in ALLOWED_HOSTS if hos
 CSRF_TRUSTED_ORIGINS = [
     origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()
 ]
-if railway_domain:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{railway_domain}")
 if vercel_domain:
     CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_domain}")
 CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
@@ -123,6 +118,8 @@ if os.getenv("DJANGO_USE_SQLITE") == "1":
     }
 elif database_url := os.getenv("DATABASE_URL"):
     DATABASES = {"default": database_config(database_url)}
+elif IS_VERCEL:
+    raise ImproperlyConfigured("DATABASE_URL is required for Vercel deployments.")
 else:
     DATABASES = {
         "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}

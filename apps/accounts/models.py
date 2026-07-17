@@ -45,5 +45,17 @@ class User(UUIDModel, TimeStampedModel, AbstractUser):
     REQUIRED_FIELDS = []
     objects: UserManager = UserManager()  # type: ignore[misc, assignment]
 
+    def get_full_name(self) -> str:
+        """Return the full Russian-style name used across the interface."""
+        return " ".join(
+            part
+            for part in (
+                self.last_name.strip(),
+                self.first_name.strip(),
+                self.middle_name.strip(),
+            )
+            if part
+        )
+
     def __str__(self) -> str:
         return self.get_full_name() or self.email
