@@ -1,1 +1,1 @@
-{% extends 'base.html' %}{% block content %}<h1>Профиль</h1><div class="card"><p>{{ user.get_full_name }}</p><p>{{ user.email }}</p></div>{% endblock %}
+{% extends 'base.html' %}{% block content %}<section class="page-header"><p class="eyebrow">Аккаунт</p><h1>Профиль</h1><p>Данные вашей учётной записи.</p></section><div class="profile-card"><div class="avatar">{{ user.email|first|upper }}</div><div><h2>{{ user.get_full_name|default:user.email }}</h2><p>{{ user.email }}</p></div></div>{% endblock %}

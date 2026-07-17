@@ -12,6 +12,45 @@ class EnrollmentError(ValueError):
     pass
 
 
+def ordered_course_blocks(course):
+    """Return published course blocks in the order a learner sees them."""
+    return list(
+        ContentBlock.objects.filter(
+            lesson__section__course=course,
+            lesson__is_published=True,
+            lesson__section__is_published=True,
+        )
+        .select_related("lesson__section", "file_content", "text_content", "quiz")
+        .order_by("lesson__section__position", "lesson__position", "position")
+    )
+
+
+def is_block_available(
+    *, enrollment: Enrollment, block: ContentBlock, blocks=None, completed_block_ids=None
+) -> bool:
+    """Quizzes open only when each required preceding block is completed."""
+    if block.type != ContentBlock.Type.QUIZ:
+        return True
+    blocks = blocks if blocks is not None else ordered_course_blocks(enrollment.course_run.course)
+    try:
+        block_index = blocks.index(block)
+    except ValueError:
+        return False
+    preceding = [item.id for item in blocks[:block_index] if item.is_required]
+    if not preceding:
+        return True
+    completed = (
+        completed_block_ids
+        if completed_block_ids is not None
+        else set(
+            enrollment.progresses.filter(
+                content_block_id__in=preceding, status="completed"
+            ).values_list("content_block_id", flat=True)
+        )
+    )
+    return completed == set(preceding)
+
+
 @transaction.atomic
 def enroll(*, course_run: CourseRun, user, source: str = "self") -> Enrollment:
     run = CourseRun.objects.select_for_update().get(pk=course_run.pk)

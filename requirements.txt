@@ -10,3 +10,4 @@ pytest-django>=4.12
 ruff>=0.15
 pre-commit>=4.0
 Pillow>=12
+python-dotenv>=1.2

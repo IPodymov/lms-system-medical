@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block content %}
-<article class="card course-detail">
+<article class="course-detail">
   {% if course.cover %}<img class="course-cover" src="{{ course.cover.url }}" alt="Обложка курса {{ course.title }}">{% endif %}
-  <h1>{{ course.title }}</h1><p>{{ course.short_description }}</p><div>{{ course.description|linebreaks }}</div>
-  {% if can_edit %}<p><a class="button-link" href="{% url 'course-edit' course.id %}">Редактировать курс</a></p>{% endif %}
+  <div class="course-detail-content"><p class="eyebrow">Курс</p><h1>{{ course.title }}</h1><p class="lead">{{ course.short_description }}</p><div class="course-description">{{ course.description|linebreaks }}</div>
+  {% if can_edit %}<p><a class="button-link" href="{% url 'course-edit' course.id %}">Редактировать курс</a></p>{% endif %}</div>
 </article>
 {% endblock %}

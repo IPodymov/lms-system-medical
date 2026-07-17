@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.learning.models import Enrollment
-from apps.learning.services import update_progress
+from apps.learning.services import is_block_available, update_progress
 
 from .models import Quiz
 from .services import QuizError, save_answer, start_attempt, submit_attempt
@@ -19,6 +19,9 @@ def take_quiz(request, quiz_id):
         user=request.user,
         course_run__course=quiz.content_block.lesson.section.course,
     )
+    if not is_block_available(enrollment=enrollment, block=quiz.content_block):
+        messages.error(request, "Сначала завершите материалы, которые идут перед этим тестом.")
+        return redirect("course-learning", enrollment.pk)
     attempt = (
         quiz.attempts.filter(enrollment=enrollment, status="started")
         .order_by("-attempt_number")

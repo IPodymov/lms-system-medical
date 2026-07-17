@@ -7,6 +7,13 @@
   <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}"></label>
   <label>Подробное описание<textarea name="description" rows="6">{{ request.POST.description }}</textarea></label>
   <label>Обложка (необязательно)<input type="file" name="cover" accept="image/*"></label>
+  <fieldset><legend>Первая тема (необязательно)</legend>
+    <p>Можно сразу добавить тему лекции и дополнительный материал — после создания они появятся в программе курса.</p>
+    <label>Название темы<input name="lesson_title" value="{{ request.POST.lesson_title }}" placeholder="Например, Введение в предмет"></label>
+    <label>Текст лекции<textarea name="lesson_content" rows="6">{{ request.POST.lesson_content }}</textarea></label>
+    <label>Название дополнительного материала<input name="material_title" value="{{ request.POST.material_title }}" placeholder="Например, Презентация к лекции"></label>
+    <label>Файл материала<input type="file" name="material_file"></label>
+  </fieldset>
   <button>Создать курс</button>
 </form></div>
 {% endblock %}

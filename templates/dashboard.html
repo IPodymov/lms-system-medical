@@ -1,13 +1,6 @@
-{% extends 'base.html' %}{% block content %}
-<h1>Главная</h1>
-<h2>Продолжить обучение</h2>
-{% for e in enrollments %}<a
-  class="card"
-  href="{% url 'course-learning' e.id %}"
-  ><strong>{{ e.course_run.title }}</strong
-  ><small>{{ e.progress_percent }}% завершено</small></a
->{% empty %}
-<p>
-  Нет активных курсов. <a href="{% url 'course-catalog' %}">Открыть каталог</a>
-</p>
-{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-header"><p class="eyebrow">Обучение</p><h1>Добро пожаловать</h1><p>Продолжайте с того места, где остановились.</p></section>
+<section class="dashboard-section"><div class="section-heading"><h2>Продолжить обучение</h2><a href="{% url 'course-catalog' %}">Открыть каталог →</a></div>
+<div class="course-list">{% for e in enrollments %}<a class="learning-card" href="{% url 'course-learning' e.id %}"><div><p class="card-kicker">{{ e.course_run.course.title }}</p><h3>{{ e.course_run.title }}</h3></div><div class="card-progress"><span>{{ e.progress_percent }}%</span><div class="mini-progress"><i style="width: {{ e.progress_percent }}%"></i></div></div></a>{% empty %}<div class="empty-state"><h2>Здесь появятся ваши курсы</h2><p>Выберите курс из каталога, чтобы начать обучение.</p><a class="button-link" href="{% url 'course-catalog' %}">Перейти в каталог</a></div>{% endfor %}</div></section>
+{% endblock %}

@@ -6,7 +6,7 @@ from apps.accounts.models import User
 from apps.assessments.models import Quiz
 from apps.organizations.models import Organization, OrganizationMembership
 
-from .models import ContentBlock, Course, FileContent
+from .models import ContentBlock, Course, FileContent, TextContent
 
 
 class CourseAuthoringViewsTests(TestCase):
@@ -34,9 +34,85 @@ class CourseAuthoringViewsTests(TestCase):
 
         course = Course.objects.get(title="Фармакология")
         self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        edit_response = self.client.get(reverse("course-edit", args=[course.pk]))
+        self.assertEqual(edit_response.status_code, 200)
         self.assertEqual(course.short_description, "Введение")
         self.assertEqual(course.description, "Описание курса")
         self.assertTrue(course.authors.filter(user=self.user, role="owner").exists())
+
+    def test_author_can_create_course_with_long_title(self):
+        title = "a" * 255
+
+        response = self.client.post(reverse("course-create"), {"title": title})
+
+        course = Course.objects.get(title=title)
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertEqual(course.slug, "a" * 50)
+
+    def test_long_course_slugs_remain_unique(self):
+        title = "a" * 255
+        Course.objects.create(
+            organization=self.organization,
+            title="Первый курс",
+            slug="a" * 50,
+            created_by=self.user,
+        )
+
+        self.client.post(reverse("course-create"), {"title": title})
+
+        course = Course.objects.get(title=title)
+        self.assertEqual(course.slug, f"{'a' * 48}-2")
+
+    def test_author_can_add_first_lesson_and_material_when_creating_course(self):
+        response = self.client.post(
+            reverse("course-create"),
+            {
+                "title": "Анатомия",
+                "lesson_title": "Строение сердца",
+                "lesson_content": "Текст лекции",
+                "material_title": "Атлас",
+                "material_file": SimpleUploadedFile("atlas.pdf", b"pdf"),
+            },
+        )
+
+        course = Course.objects.get(title="Анатомия")
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertTrue(course.sections.filter(lessons__title="Строение сердца").exists())
+        self.assertTrue(TextContent.objects.filter(body="Текст лекции").exists())
+        self.assertTrue(FileContent.objects.filter(content_block__title="Атлас").exists())
+
+    def test_editor_can_add_text_block_to_a_topic(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+        self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Тема"},
+        )
+        lesson = course.sections.get(title="Раздел").lessons.get(title="Тема")
+
+        response = self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {
+                "action": "add_text",
+                "lesson_id": lesson.pk,
+                "text_title": "Основные понятия",
+                "text_body": "Текст лекции",
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertTrue(
+            TextContent.objects.filter(
+                content_block__lesson=lesson,
+                content_block__title="Основные понятия",
+                body="Текст лекции",
+            ).exists()
+        )
 
     def test_editor_adds_material_and_quiz(self):
         course = Course.objects.create(
