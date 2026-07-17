@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
@@ -19,8 +20,8 @@ class UUIDModel(models.Model):
         abstract = True
 
 
-class UserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
+class UserManager(BaseUserManager["User"]):
+    def create_user(self, email: str, password: str | None = None, **extra_fields: Any) -> "User":
         if not email:
             raise ValueError("Email обязателен")
         user = self.model(email=self.normalize_email(email), username=email, **extra_fields)
@@ -28,7 +29,9 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(
+        self, email: str, password: str | None = None, **extra_fields: Any
+    ) -> "User":
         extra_fields.update(is_staff=True, is_superuser=True)
         return self.create_user(email, password, **extra_fields)
 
@@ -40,7 +43,7 @@ class User(UUIDModel, TimeStampedModel, AbstractUser):
     avatar = models.ImageField(upload_to="avatars/", blank=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
-    objects = UserManager()
+    objects: UserManager = UserManager()  # type: ignore[misc, assignment]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_full_name() or self.email

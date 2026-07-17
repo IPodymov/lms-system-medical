@@ -77,7 +77,7 @@ def enroll_view(request, run_id):
 
 def _course_slug(organization, title):
     """Return a unique slug that fits the Course.slug column."""
-    max_length = Course._meta.get_field("slug").max_length
+    max_length = Course._meta.get_field("slug").max_length or 50
     base_slug = (slugify(title) or "course")[:max_length]
     slug, index = base_slug, 2
 

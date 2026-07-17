@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from dotenv import load_dotenv
@@ -8,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def database_config(database_url: str) -> dict:
+def database_config(database_url: str) -> dict[str, Any]:
     """Build Django's PostgreSQL configuration from a standard database URL."""
     parsed = urlparse(database_url)
     if parsed.scheme not in {"postgres", "postgresql"}:
@@ -17,12 +18,8 @@ def database_config(database_url: str) -> dict:
         raise ValueError("DATABASE_URL must include host, database name, and user.")
 
     query = parse_qs(parsed.query)
-    options = {
-        key: query[key][-1]
-        for key in ("sslmode", "connect_timeout")
-        if query.get(key)
-    }
-    config = {
+    options = {key: query[key][-1] for key in ("sslmode", "connect_timeout") if query.get(key)}
+    config: dict[str, Any] = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": unquote(parsed.path.lstrip("/")),
         "USER": unquote(parsed.username),
@@ -43,9 +40,7 @@ if railway_domain := os.getenv("RAILWAY_PUBLIC_DOMAIN"):
 ALLOWED_HOSTS = list(dict.fromkeys(host.strip() for host in ALLOWED_HOSTS if host.strip()))
 
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
+    origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()
 ]
 if railway_domain:
     CSRF_TRUSTED_ORIGINS.append(f"https://{railway_domain}")
@@ -71,6 +66,7 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -96,7 +92,11 @@ TEMPLATES = [
 ]
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
-if database_url := os.getenv("DATABASE_URL"):
+if os.getenv("DJANGO_USE_SQLITE") == "1":
+    DATABASES = {
+        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
+    }
+elif database_url := os.getenv("DATABASE_URL"):
     DATABASES = {"default": database_config(database_url)}
 else:
     DATABASES = {
@@ -118,11 +118,18 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+if not DEBUG and os.getenv("DJANGO_USE_SQLITE") != "1":
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31_536_000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],

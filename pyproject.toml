@@ -14,3 +14,17 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+files = ["apps", "config"]
+exclude = ["migrations"]
+check_untyped_defs = true
+disable_error_code = ["import-untyped"]
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"

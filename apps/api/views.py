@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import generics, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -19,6 +20,16 @@ from .serializers import (
 
 
 class MeView(APIView):
+    @extend_schema(
+        responses=inline_serializer(
+            name="CurrentUser",
+            fields={
+                "id": serializers.UUIDField(),
+                "email": serializers.EmailField(),
+                "name": serializers.CharField(),
+            },
+        )
+    )
     def get(self, request):
         return Response(
             {
@@ -72,6 +83,7 @@ class NotificationView(generics.ListAPIView):
 
 
 class StartAttemptView(APIView):
+    @extend_schema(request=None, responses={201: AttemptSerializer})
     def post(self, request, quiz_id):
         quiz = get_object_or_404(
             Quiz.objects.select_related("content_block__lesson__section"), pk=quiz_id
@@ -90,6 +102,7 @@ class StartAttemptView(APIView):
 
 
 class AnswerView(APIView):
+    @extend_schema(request=None, responses={204: None})
     def put(self, request, attempt_id):
         attempt = get_object_or_404(
             QuizAttempt.objects.select_related("enrollment"),
@@ -108,6 +121,7 @@ class AnswerView(APIView):
 
 
 class SubmitView(APIView):
+    @extend_schema(request=None, responses=AttemptSerializer)
     def post(self, request, attempt_id):
         attempt = get_object_or_404(QuizAttempt, pk=attempt_id, enrollment__user=request.user)
         return Response(AttemptSerializer(submit_attempt(attempt=attempt)).data)

@@ -20,7 +20,7 @@ class EnrollmentServiceTests(TestCase):
             organization=org, title="Курс", slug="course", status="published", created_by=self.user
         )
         now = timezone.now()
-        self.run = CourseRun.objects.create(
+        self.course_run = CourseRun.objects.create(
             course=course,
             title="Поток",
             semester="1",
@@ -34,15 +34,15 @@ class EnrollmentServiceTests(TestCase):
         )
 
     def test_enrollment_is_idempotent(self):
-        enroll(course_run=self.run, user=self.user)
-        enroll(course_run=self.run, user=self.user)
+        enroll(course_run=self.course_run, user=self.user)
+        enroll(course_run=self.course_run, user=self.user)
         self.assertEqual(Enrollment.objects.count(), 1)
 
     def test_closed_enrollment_is_rejected(self):
-        self.run.enrollment_end_at = timezone.now() - timedelta(seconds=1)
-        self.run.save()
+        self.course_run.enrollment_end_at = timezone.now() - timedelta(seconds=1)
+        self.course_run.save()
         with self.assertRaises(EnrollmentError):
-            enroll(course_run=self.run, user=self.user)
+            enroll(course_run=self.course_run, user=self.user)
 
 
 class CourseLearningNavigationTests(TestCase):
