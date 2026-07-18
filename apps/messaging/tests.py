@@ -63,6 +63,25 @@ class MessagingTests(TestCase):
         self.assertEqual(DirectMessage.objects.count(), 1)
         self.assertEqual(Notification.objects.filter(type="direct_message").count(), 1)
 
+    def test_contacts_are_limited_to_favorites_and_existing_dialogues(self):
+        outsider = User.objects.create_user("outsider@example.test", "password")
+        self.client.force_login(self.sender)
+
+        response = self.client.get(reverse("direct-messages"))
+        self.assertNotContains(response, self.recipient.email)
+        self.assertNotContains(response, outsider.email)
+
+        self.client.post(reverse("toggle-favorite-contact", args=[outsider.pk]))
+        response = self.client.get(reverse("direct-messages"))
+        self.assertContains(response, outsider.email)
+        self.assertNotContains(response, self.recipient.email)
+
+        self.client.post(
+            reverse("direct-message-thread", args=[self.recipient.pk]), {"body": "Здравствуйте"}
+        )
+        response = self.client.get(reverse("direct-messages"))
+        self.assertContains(response, self.recipient.email)
+
     def test_course_chat_is_available_only_to_course_participants(self):
         self.client.force_login(self.sender)
         response = self.client.post(

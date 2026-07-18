@@ -1,6 +1,11 @@
+from io import BytesIO
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from apps.courses.models import Course, CourseRun, CourseRunStaff
+from apps.learning.models import Enrollment
 from apps.organizations.models import Organization, OrganizationMembership
 
 from .models import User
@@ -94,3 +99,118 @@ class NavigationTests(TestCase):
         response = self.client.get(reverse("dashboard"))
 
         self.assertContains(response, 'href="/courses/create/"')
+        self.assertContains(response, reverse("documentation-home"))
+        self.assertEqual(self.client.get(reverse("documentation-courses")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("documentation-management")).status_code, 403)
+
+    def test_student_cannot_see_or_open_documentation(self):
+        student = User.objects.create_user("student@example.test", "safe-password-123")
+        self.client.force_login(student)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertNotContains(response, reverse("documentation-home"))
+        self.assertEqual(self.client.get(reverse("documentation-home")).status_code, 403)
+
+    def test_organization_admin_can_open_management_documentation(self):
+        admin = User.objects.create_user("org-admin@example.test", "safe-password-123")
+        organization = Organization.objects.create(
+            name="Медицинский университет", short_name="МУ", slug="medical-university"
+        )
+        OrganizationMembership.objects.create(
+            user=admin,
+            organization=organization,
+            role=OrganizationMembership.Role.ORGANIZATION_ADMIN,
+        )
+        self.client.force_login(admin)
+
+        self.assertEqual(self.client.get(reverse("documentation-home")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("documentation-management")).status_code, 200)
+
+
+class CollegeManagementTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("admin@example.test", "safe-password-123")
+        self.organization = Organization.objects.create(
+            name="Медицинский колледж", short_name="МК", slug="medical-college"
+        )
+        self.client.force_login(self.admin)
+
+    def test_excel_import_creates_group_student_and_membership(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(["group", "email", "password", "first_name", "last_name"])
+        worksheet.append(["С-21", "student@example.test", "safe-password-123", "Иван", "Петров"])
+        content = BytesIO()
+        workbook.save(content)
+
+        response = self.client.post(
+            reverse("import-students"),
+            {
+                "organization_id": self.organization.pk,
+                "spreadsheet": SimpleUploadedFile(
+                    "students.xlsx",
+                    content.getvalue(),
+                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ),
+            },
+        )
+
+        self.assertRedirects(response, reverse("admin-dashboard"))
+        student = User.objects.get(email="student@example.test")
+        membership = OrganizationMembership.objects.get(
+            user=student, organization=self.organization
+        )
+        self.assertEqual(membership.role, OrganizationMembership.Role.STUDENT)
+        self.assertTrue(student.studygroupmember_set.filter(study_group__name="С-21").exists())
+
+    def test_admin_can_assign_curator_and_manage_enrollment(self):
+        teacher = User.objects.create_user("teacher@example.test", "safe-password-123")
+        student = User.objects.create_user("student@example.test", "safe-password-123")
+        OrganizationMembership.objects.create(
+            user=teacher,
+            organization=self.organization,
+            role=OrganizationMembership.Role.TEACHER,
+        )
+        OrganizationMembership.objects.create(
+            user=student,
+            organization=self.organization,
+            role=OrganizationMembership.Role.STUDENT,
+        )
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Анатомия",
+            slug="anatomy",
+            created_by=self.admin,
+        )
+        now = timezone.now()
+        course_run = CourseRun.objects.create(
+            course=course,
+            title="Основной поток",
+            semester="1",
+            academic_year="2026",
+            start_at=now,
+            end_at=now,
+            enrollment_start_at=now,
+            enrollment_end_at=now,
+            status=CourseRun.Status.ACTIVE,
+        )
+
+        self.client.post(
+            reverse("assign-course-staff"),
+            {"course_run_id": course_run.pk, "user_id": teacher.pk, "role": "curator"},
+        )
+        self.client.post(
+            reverse("manage-course-enrollment"),
+            {"action": "add_student", "course_run_id": course_run.pk, "user_id": student.pk},
+        )
+
+        self.assertTrue(
+            CourseRunStaff.objects.filter(
+                course_run=course_run, user=teacher, role="curator"
+            ).exists()
+        )
+        self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())

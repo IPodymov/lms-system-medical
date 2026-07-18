@@ -7,6 +7,23 @@ from apps.accounts.models import TimeStampedModel, UUIDModel
 from apps.courses.models import CourseRun
 
 
+class FavoriteContact(models.Model):
+    """A user-selected contact that stays visible before a dialogue starts."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorite_contacts"
+    )
+    contact = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorited_by"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "contact"], name="unique_favorite_contact")
+        ]
+
+
 class DirectMessage(UUIDModel, TimeStampedModel):
     """A private message between two LMS users."""
 

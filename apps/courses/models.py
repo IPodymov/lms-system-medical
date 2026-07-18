@@ -73,7 +73,12 @@ class CourseRunStaff(models.Model):
     course_run = models.ForeignKey(CourseRun, on_delete=models.CASCADE, related_name="staff")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(
-        max_length=12, choices=[("teacher", "Преподаватель"), ("assistant", "Ассистент")]
+        max_length=12,
+        choices=[
+            ("teacher", "Преподаватель"),
+            ("curator", "Куратор"),
+            ("assistant", "Ассистент"),
+        ],
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -10,7 +10,7 @@ from apps.courses.models import CourseRun
 from apps.notifications.models import Notification
 
 from .forms import CourseMessageForm, DirectMessageForm
-from .models import CourseMessage, DirectMessage
+from .models import CourseMessage, DirectMessage, FavoriteContact
 
 User = get_user_model()
 
@@ -64,13 +64,28 @@ def direct_messages(request, user_id=None):
         )
 
     query = request.GET.get("q", "").strip()
+    favorite_contact = FavoriteContact.objects.filter(user=request.user, contact_id=OuterRef("pk"))
+    sent_contact_ids = DirectMessage.objects.filter(sender=request.user).values("recipient_id")
+    received_contact_ids = DirectMessage.objects.filter(recipient=request.user).values("sender_id")
     contacts = (
         User.objects.filter(is_active=True)
         .exclude(pk=request.user.pk)
-        .order_by("first_name", "last_name", "email")
+        .filter(
+            Q(pk__in=sent_contact_ids)
+            | Q(pk__in=received_contact_ids)
+            | Q(favorited_by__user=request.user)
+        )
+        .annotate(is_favorite=Exists(favorite_contact))
+        .distinct()
+        .order_by("-is_favorite", "first_name", "last_name", "email")
     )
     if query:
-        contacts = contacts.filter(Q(username__icontains=query) | Q(email__icontains=query))
+        contacts = contacts.filter(
+            Q(username__icontains=query)
+            | Q(email__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+        )
     contacts = contacts[:50]
     return render(
         request,
@@ -81,8 +96,28 @@ def direct_messages(request, user_id=None):
             "thread": thread,
             "form": form,
             "query": query,
+            "recipient_is_favorite": bool(
+                recipient
+                and FavoriteContact.objects.filter(user=request.user, contact=recipient).exists()
+            ),
         },
     )
+
+
+@login_required
+def toggle_favorite_contact(request, user_id):
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    contact = get_object_or_404(User, pk=user_id, is_active=True)
+    if contact == request.user:
+        return HttpResponseForbidden()
+    favorite, created = FavoriteContact.objects.get_or_create(user=request.user, contact=contact)
+    if created:
+        messages.success(request, "Пользователь добавлен в избранное.")
+    else:
+        favorite.delete()
+        messages.success(request, "Пользователь убран из избранного.")
+    return redirect("direct-message-thread", user_id=contact.pk)
 
 
 def _can_access_course_chat(user, course_run):
