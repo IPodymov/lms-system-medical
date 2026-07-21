@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -8,7 +10,15 @@ from apps.assessments.models import Quiz
 from apps.learning.models import Enrollment
 from apps.organizations.models import Organization, OrganizationMembership
 
-from .models import ContentBlock, Course, CourseMaterialLink, CourseRun, FileContent, TextContent
+from .models import (
+    ContentBlock,
+    Course,
+    CourseEnrollmentLink,
+    CourseMaterialLink,
+    CourseRun,
+    FileContent,
+    TextContent,
+)
 
 
 class CourseAuthoringViewsTests(TestCase):
@@ -132,6 +142,43 @@ class CourseAuthoringViewsTests(TestCase):
 
         self.assertContains(response, "Открытый курс")
         self.assertContains(response, reverse("enroll", args=[run.pk]))
+
+    def test_authenticated_student_can_enroll_using_an_active_link(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Курс по ссылке",
+            slug="link-course",
+            created_by=self.user,
+            status=Course.Status.PUBLISHED,
+        )
+        now = timezone.now()
+        course_run = CourseRun.objects.create(
+            course=course,
+            title="Основной поток",
+            semester="1",
+            academic_year="2026",
+            start_at=now,
+            end_at=now + timedelta(days=30),
+            enrollment_start_at=now - timedelta(days=1),
+            enrollment_end_at=now + timedelta(days=1),
+            status=CourseRun.Status.ACTIVE,
+        )
+        enrollment_link = CourseEnrollmentLink.objects.create(
+            course_run=course_run, created_by=self.user, label="Тестовая ссылка"
+        )
+        student = User.objects.create_user("student@example.test", "password")
+        self.client.force_login(student)
+
+        response = self.client.get(reverse("enroll-by-link", args=[enrollment_link.pk]))
+        self.assertContains(response, "Курс по ссылке")
+        response = self.client.post(reverse("enroll-by-link", args=[enrollment_link.pk]))
+
+        self.assertRedirects(response, reverse("my-courses"))
+        self.assertTrue(
+            Enrollment.objects.filter(
+                course_run=course_run, user=student, enrollment_source="link"
+            ).exists()
+        )
 
     def test_author_can_open_course_and_add_self_as_learner(self):
         course = Course.objects.create(

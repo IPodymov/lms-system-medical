@@ -9,5 +9,6 @@ urlpatterns = [
     path("<uuid:course_id>/edit/", views.course_edit, name="course-edit"),
     path("<uuid:course_id>/quizzes/create/", views.quiz_create, name="quiz-create"),
     path("runs/<uuid:run_id>/enroll/", views.enroll_view, name="enroll"),
+    path("join/<uuid:link_id>/", views.enroll_by_link, name="enroll-by-link"),
     path("<uuid:course_id>/", views.course_detail, name="course-detail"),
 ]

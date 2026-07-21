@@ -18,9 +18,7 @@ class MessageForm(forms.ModelForm):
         cleaned_data = super().clean() or {}
         if not cleaned_data.get("client_token"):
             cleaned_data["client_token"] = uuid.uuid4()
-        if not cleaned_data.get("body", "").strip() and not cleaned_data.get(
-            "attachment"
-        ):
+        if not cleaned_data.get("body", "").strip() and not cleaned_data.get("attachment"):
             raise forms.ValidationError("Введите сообщение или прикрепите файл.")
         return cleaned_data
 
@@ -36,11 +34,7 @@ class DirectMessageForm(MessageForm):
         model = DirectMessage
         fields = ["body", "attachment", "client_token"]
         labels = {"body": "Сообщение"}
-        widgets = {
-            "body": forms.Textarea(
-                attrs={"rows": 3, "placeholder": "Напишите сообщение…"}
-            )
-        }
+        widgets = {"body": forms.Textarea(attrs={"rows": 3, "placeholder": "Напишите сообщение…"})}
 
 
 class CourseMessageForm(MessageForm):
@@ -49,7 +43,5 @@ class CourseMessageForm(MessageForm):
         fields = ["body", "attachment", "client_token"]
         labels = {"body": "Сообщение в общий чат"}
         widgets = {
-            "body": forms.Textarea(
-                attrs={"rows": 3, "placeholder": "Задайте вопрос группе…"}
-            )
+            "body": forms.Textarea(attrs={"rows": 3, "placeholder": "Задайте вопрос группе…"})
         }

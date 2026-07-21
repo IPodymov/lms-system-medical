@@ -7,10 +7,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.courses.models import CourseRun
-from apps.notifications.models import Notification
+from apps.organizations.models import OrganizationMembership
 
 from .forms import CourseMessageForm, DirectMessageForm
 from .models import CourseMessage, DirectMessage, FavoriteContact
+from .permissions import can_access_course_chat
+from .services import create_course_message, create_direct_message
 
 User = get_user_model()
 
@@ -29,26 +31,13 @@ def direct_messages(request, user_id=None):
             return HttpResponseForbidden()
         form = DirectMessageForm(request.POST, request.FILES)
         if form.is_valid():
-            item, created = DirectMessage.objects.get_or_create(
+            create_direct_message(
+                sender=request.user,
+                recipient=recipient,
+                body=form.cleaned_data["body"],
+                attachment=form.cleaned_data.get("attachment"),
                 client_token=form.cleaned_data["client_token"],
-                defaults={
-                    "sender": request.user,
-                    "recipient": recipient,
-                    "body": form.cleaned_data["body"],
-                    "attachment": form.cleaned_data.get("attachment"),
-                    "attachment_content_type": getattr(
-                        form.cleaned_data.get("attachment"), "content_type", ""
-                    ),
-                },
             )
-            if created:
-                Notification.objects.create(
-                    user=recipient,
-                    type="direct_message",
-                    title="Новое личное сообщение",
-                    body=f"{request.user.get_full_name() or request.user.email}: {item.body[:120]}",
-                    payload={"sender_id": str(request.user.pk)},
-                )
             return redirect("direct-message-thread", user_id=recipient.pk)
     else:
         form = DirectMessageForm()
@@ -67,7 +56,7 @@ def direct_messages(request, user_id=None):
     favorite_contact = FavoriteContact.objects.filter(user=request.user, contact_id=OuterRef("pk"))
     sent_contact_ids = DirectMessage.objects.filter(sender=request.user).values("recipient_id")
     received_contact_ids = DirectMessage.objects.filter(recipient=request.user).values("sender_id")
-    contacts = (
+    recent_contacts = (
         User.objects.filter(is_active=True)
         .exclude(pk=request.user.pk)
         .filter(
@@ -80,13 +69,33 @@ def direct_messages(request, user_id=None):
         .order_by("-is_favorite", "first_name", "last_name", "email")
     )
     if query:
-        contacts = contacts.filter(
-            Q(username__icontains=query)
-            | Q(email__icontains=query)
-            | Q(first_name__icontains=query)
-            | Q(last_name__icontains=query)
+        name_query = Q()
+        for part in query.split():
+            name_query &= (
+                Q(username__icontains=part)
+                | Q(email__icontains=part)
+                | Q(first_name__icontains=part)
+                | Q(last_name__icontains=part)
+                | Q(middle_name__icontains=part)
+            )
+        contacts = (
+            User.objects.filter(is_active=True)
+            .exclude(pk=request.user.pk)
+            .filter(name_query)
+            .annotate(is_favorite=Exists(favorite_contact))
+            .order_by("-is_favorite", "last_name", "first_name", "middle_name", "email")
         )
+    else:
+        contacts = recent_contacts
     contacts = contacts[:50]
+    recipient_membership = None
+    if recipient:
+        recipient_membership = (
+            OrganizationMembership.objects.filter(user=recipient, status="active")
+            .select_related("organization")
+            .order_by("organization__short_name")
+            .first()
+        )
     return render(
         request,
         "messaging/direct_messages.html",
@@ -100,6 +109,7 @@ def direct_messages(request, user_id=None):
                 recipient
                 and FavoriteContact.objects.filter(user=request.user, contact=recipient).exists()
             ),
+            "recipient_membership": recipient_membership,
         },
     )
 
@@ -120,53 +130,21 @@ def toggle_favorite_contact(request, user_id):
     return redirect("direct-message-thread", user_id=contact.pk)
 
 
-def _can_access_course_chat(user, course_run):
-    return (
-        user.is_superuser
-        or course_run.enrollments.filter(user=user).exists()
-        or course_run.staff.filter(user=user).exists()
-    )
-
-
 @login_required
 def course_chat(request, run_id):
     course_run = get_object_or_404(CourseRun.objects.select_related("course"), pk=run_id)
-    if not _can_access_course_chat(request.user, course_run):
+    if not can_access_course_chat(request.user, course_run):
         return HttpResponseForbidden()
     if request.method == "POST":
         form = CourseMessageForm(request.POST, request.FILES)
         if form.is_valid():
-            item, created = CourseMessage.objects.get_or_create(
+            create_course_message(
+                course_run=course_run,
+                author=request.user,
+                body=form.cleaned_data["body"],
+                attachment=form.cleaned_data.get("attachment"),
                 client_token=form.cleaned_data["client_token"],
-                defaults={
-                    "course_run": course_run,
-                    "author": request.user,
-                    "body": form.cleaned_data["body"],
-                    "attachment": form.cleaned_data.get("attachment"),
-                    "attachment_content_type": getattr(
-                        form.cleaned_data.get("attachment"), "content_type", ""
-                    ),
-                },
             )
-            if created:
-                recipients = course_run.enrollments.exclude(user=request.user).values_list(
-                    "user_id", flat=True
-                )
-                Notification.objects.bulk_create(
-                    [
-                        Notification(
-                            user_id=user_id,
-                            type="course_chat",
-                            title=f"Новое сообщение в чате: {course_run.title}",
-                            body=(
-                                f"{request.user.get_full_name() or request.user.email}: "
-                                f"{item.body[:120]}"
-                            ),
-                            payload={"course_run_id": str(course_run.pk)},
-                        )
-                        for user_id in recipients
-                    ]
-                )
             return redirect("course-chat", run_id=course_run.pk)
     else:
         form = CourseMessageForm()

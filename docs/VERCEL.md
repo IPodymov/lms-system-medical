@@ -4,8 +4,8 @@
 
 ## Обязательные переменные окружения
 
-Добавьте для Production и Preview те же значения, что подготовлены в локальном
-`.env` (сам файл Vercel при Git-деплое не читает):
+Добавьте для Production и Preview значения из `.env.production` (сам файл Vercel
+при Git-деплое не читает):
 
 - `DJANGO_SECRET_KEY` — новый случайный секрет, уникальный для окружения;
 - `DATABASE_URL` — URL внешней PostgreSQL-базы с TLS;
@@ -21,15 +21,15 @@
 
 ## Локальная синхронизация
 
-Локальный файл `.env.local` уже добавлен в `.gitignore` и содержит безопасные параметры разработки. После связывания папки с Vercel синхронизируйте переменные нужного окружения:
+Файлы `.env` и `.env.production` добавлены в `.gitignore`; в Git не попадают ни локальные, ни production-секреты. После связывания папки с Vercel синхронизируйте переменные нужного окружения:
 
 ```bash
 vercel link
-vercel env pull .env.local --environment=development --yes
+vercel env pull .env.production --environment=production --yes
 ```
 
-Django читает `.env.local` только локально и не использует этот файл на Vercel.
-Файлы `.env` и `.env.local` намеренно исключены из Git. Не добавляйте в Git
+На Vercel Django использует переменные платформы и не читает локальные файлы.
+Не добавляйте в Git
 `DJANGO_SECRET_KEY`, `DATABASE_URL` или другие секреты.
 
 ## База данных и миграции

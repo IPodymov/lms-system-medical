@@ -1,4 +1,4 @@
-from django.conf import settings
+from django.conf import settings  # pylint: disable=unused-import
 from django.db import models
 
 from apps.accounts.models import TimeStampedModel, UUIDModel

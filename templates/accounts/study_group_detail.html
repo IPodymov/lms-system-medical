@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}{{ study_group.name }} | Управление | МедЛМС{% endblock %}
+{% block content %}
+<section class="group-detail-header">
+  <div><a class="back-link" href="{% url 'admin-dashboard' %}">← Все группы</a><p class="eyebrow">Учебная группа</p><h1>{{ study_group.name }}</h1><p>{{ study_group.department.faculty.organization.short_name }} · поступление {{ study_group.admission_year }} · выпуск {{ study_group.graduation_year }}</p></div>
+  <span class="group-member-count">{{ members|length }} слушателей</span>
+</section>
+
+<section class="group-detail-layout">
+  <div class="group-roster">
+    <div class="section-heading"><div><p class="eyebrow">Состав</p><h2>Студенты группы</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Студент</th><th>Логин</th><th>Номер студента</th><th>В группе с</th></tr></thead><tbody>{% for member in members %}<tr><td><strong>{{ member.user.get_full_name|default:member.user.email }}</strong><small>{{ member.user.email }}</small></td><td><code>{{ member.user.username }}</code></td><td>{{ member.organization_membership.student_number|default:"—" }}</td><td>{{ member.joined_at|date:"d.m.Y" }}</td></tr>{% empty %}<tr><td colspan="4">В группе пока нет студентов.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <aside class="group-actions">
+    <article class="card management-panel"><p class="eyebrow">Новый студент</p><h2>Добавить в группу</h2><form class="management-form" method="post" action="{% url 'add-student' %}">{% csrf_token %}<input type="hidden" name="group_id" value="{{ study_group.id }}"><label>Фамилия<input name="last_name" required></label><label>Имя<input name="first_name" required></label><label>Отчество<input name="middle_name"></label><label>Email<input name="email" type="email" required></label><label>Временный пароль<input name="password" type="password" autocomplete="new-password" required></label><label>Номер студента<input name="student_number"></label><button>Добавить</button></form></article>
+    <article class="card management-panel"><p class="eyebrow">Массовая запись</p><h2>Записать группу</h2><form class="management-form" method="post" action="{% url 'manage-course-enrollment' %}">{% csrf_token %}<input name="action" value="add_group" type="hidden"><input name="group_id" value="{{ study_group.id }}" type="hidden"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><button>Записать всех активных</button></form></article>
+    <article class="card management-panel"><p class="eyebrow">Приглашение</p><h2>Ссылка на поток</h2><form class="management-form" method="post" action="{% url 'create-course-enrollment-link' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'study-group-detail' study_group.id %}"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Название<input name="label" placeholder="Для {{ study_group.name }}"></label><label>Действует до<input name="expires_at" type="datetime-local"></label><button>Создать ссылку</button></form></article>
+  </aside>
+</section>
+
+<section class="management-section group-links"><div class="section-heading"><div><p class="eyebrow">Созданные приглашения</p><h2>Ссылки на курсы организации</h2></div></div><div class="link-list">{% for enrollment_link in enrollment_links %}<article class="link-row"><div><strong>{{ enrollment_link.course_run.course.title }}</strong><span>{{ enrollment_link.course_run.title }}{% if enrollment_link.label %} · {{ enrollment_link.label }}{% endif %}</span><a href="{% url 'enroll-by-link' enrollment_link.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'enroll-by-link' enrollment_link.id %}</a></div><div>{% if enrollment_link.is_active %}<span class="status-pill">Активна</span><form method="post" action="{% url 'deactivate-course-enrollment-link' enrollment_link.id %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'study-group-detail' study_group.id %}"><button class="table-action-danger">Отключить</button></form>{% else %}<span class="status-pill is-muted">Отключена</span>{% endif %}</div></article>{% empty %}<p class="empty-inline">Создайте первую ссылку для записи на курс.</p>{% endfor %}</div></section>
+{% endblock %}

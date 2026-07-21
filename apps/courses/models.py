@@ -88,6 +88,21 @@ class CourseRunStaff(models.Model):
         ]
 
 
+class CourseEnrollmentLink(UUIDModel, TimeStampedModel):
+    """A revocable URL that enrolls an authenticated learner into a course run."""
+
+    course_run = models.ForeignKey(
+        CourseRun, on_delete=models.CASCADE, related_name="enrollment_links"
+    )
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    label = models.CharField(max_length=120, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.label or f"Ссылка на {self.course_run}"
+
+
 class CourseSection(TimeStampedModel):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sections")
     title = models.CharField(max_length=255)

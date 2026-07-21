@@ -1,0 +1,54 @@
+<script>
+(() => {
+  const form = document.querySelector("[data-chat-form]");
+  const list = document.querySelector("[data-chat-list]");
+  if (!form || !list || !window.WebSocket) return;
+
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  const socket = new WebSocket(`${scheme}://${window.location.host}${form.dataset.websocketPath}`);
+  const bodyInput = form.querySelector("textarea");
+  const fileInput = form.querySelector("input[type='file']");
+
+  const appendMessage = (message) => {
+    if (document.getElementById(`message-${message.id}`)) return;
+    const article = document.createElement("article");
+    article.id = `message-${message.id}`;
+    article.className = "chat-message";
+    if (message.sender_id === "{{ user.id }}" || message.author_id === "{{ user.id }}") article.classList.add("is-own");
+    const author = document.createElement("strong");
+    author.textContent = message.sender_name || message.author_name;
+    const text = document.createElement("p");
+    text.textContent = message.body;
+    const time = document.createElement("time");
+    time.textContent = message.created_at;
+    article.append(author);
+    if (message.body) article.append(text);
+    if (message.attachment_url) {
+      const attachment = document.createElement("a");
+      attachment.className = "message-attachment";
+      attachment.href = message.attachment_url;
+      attachment.target = "_blank";
+      attachment.rel = "noopener";
+      attachment.textContent = "Скачать вложение";
+      article.append(attachment);
+    }
+    article.append(time);
+    list.append(article);
+    list.scrollTop = list.scrollHeight;
+  };
+
+  socket.addEventListener("message", (event) => {
+    const payload = JSON.parse(event.data);
+    if (payload.type === "message") appendMessage(payload.message);
+  });
+  form.addEventListener("submit", (event) => {
+    if (socket.readyState !== WebSocket.OPEN || fileInput.files.length) return;
+    event.preventDefault();
+    const body = bodyInput.value.trim();
+    if (!body) return;
+    socket.send(JSON.stringify({body, client_token: form.querySelector("input[name='client_token']").value}));
+    bodyInput.value = "";
+    form.querySelector("input[name='client_token']").value = crypto.randomUUID();
+  });
+})();
+</script>

@@ -25,6 +25,7 @@ urlpatterns = [
     path("management/users/add/", views.add_user, name="add-user"),
     path("management/teachers/add/", views.add_teacher, name="add-teacher"),
     path("management/groups/add/", views.add_study_group, name="add-study-group"),
+    path("management/groups/<int:group_id>/", views.study_group_detail, name="study-group-detail"),
     path("management/students/add/", views.add_student, name="add-student"),
     path("management/students/import/", views.import_students, name="import-students"),
     path("management/course-staff/assign/", views.assign_course_staff, name="assign-course-staff"),
@@ -37,6 +38,16 @@ urlpatterns = [
         "management/enrollments/",
         views.manage_course_enrollment,
         name="manage-course-enrollment",
+    ),
+    path(
+        "management/enrollment-links/create/",
+        views.create_course_enrollment_link,
+        name="create-course-enrollment-link",
+    ),
+    path(
+        "management/enrollment-links/<uuid:link_id>/deactivate/",
+        views.deactivate_course_enrollment_link,
+        name="deactivate-course-enrollment-link",
     ),
     path(
         "management/users/<int:membership_id>/role/",

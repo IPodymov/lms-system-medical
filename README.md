@@ -5,13 +5,26 @@
 ## Быстрый старт
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
 Локально без Docker: `.venv/bin/python manage.py migrate && .venv/bin/python manage.py runserver`.
 
+Локальные настройки уже находятся в `.env`. Для запуска вне Vercel с production
+настройками заполните `.env.production` и задайте `DJANGO_ENV=production`.
+
 Приложение: http://localhost:8000, admin: http://localhost:8000/admin/, API-документация: http://localhost:8000/api/docs/.
+
+## Кэш и realtime-чат
+
+Redis используется как общий кэш и channel layer. В Docker Compose адреса Redis подставляются
+автоматически; для запуска без Docker оставьте `CACHE_URL` и `CHANNEL_REDIS_URL` с хостом
+`localhost` и запустите Redis локально. При `DJANGO_USE_SQLITE=1` тесты используют in-memory
+cache и channel layer.
+
+Личные и курсовые чаты подключаются по WebSocket соответственно через
+`/ws/messages/direct/<user_id>/` и `/ws/messages/course/<run_id>/`. Обычная HTML-форма остаётся
+резервным путём для файловых вложений и клиентов без WebSocket.
 
 Создайте системного администратора командой `.venv/bin/python manage.py createsuperuser`.
 

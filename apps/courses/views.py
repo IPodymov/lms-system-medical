@@ -7,6 +7,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.text import slugify
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 
 from apps.assessments.models import Question, QuestionOption, Quiz, QuizQuestion
 from apps.assessments.permissions import can_edit_course
@@ -18,6 +20,7 @@ from .models import (
     ContentBlock,
     Course,
     CourseAuthor,
+    CourseEnrollmentLink,
     CourseMaterialLink,
     CourseRun,
     CourseRunStaff,
@@ -28,6 +31,8 @@ from .models import (
 )
 
 
+@cache_page(60)
+@vary_on_cookie
 def catalog(request):
     draft_courses = Course.objects.none()
     if request.user.is_authenticated:
@@ -79,6 +84,32 @@ def enroll_view(request, run_id):
         return redirect("course-catalog")
     try:
         enroll(course_run=get_object_or_404(CourseRun, pk=run_id), user=request.user)
+    except EnrollmentError as error:
+        return render(
+            request,
+            "components/alert.html",
+            {"message": str(error), "level": "error"},
+            status=400,
+        )
+    return redirect("my-courses")
+
+
+@login_required
+def enroll_by_link(request, link_id):
+    enrollment_link = get_object_or_404(
+        CourseEnrollmentLink.objects.select_related("course_run"), pk=link_id, is_active=True
+    )
+    if enrollment_link.expires_at and enrollment_link.expires_at <= timezone.now():
+        return render(
+            request,
+            "components/alert.html",
+            {"message": "Срок действия ссылки на курс истёк.", "level": "error"},
+            status=400,
+        )
+    if request.method != "POST":
+        return render(request, "courses/enroll_by_link.html", {"enrollment_link": enrollment_link})
+    try:
+        enroll(course_run=enrollment_link.course_run, user=request.user, source="link")
     except EnrollmentError as error:
         return render(
             request,

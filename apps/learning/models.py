@@ -19,7 +19,12 @@ class Enrollment(UUIDModel, TimeStampedModel):
     status = models.CharField(max_length=12, choices=Status, default=Status.ACTIVE)
     enrollment_source = models.CharField(
         max_length=12,
-        choices=[("manual", "Вручную"), ("self", "Самозапись"), ("group", "Группа")],
+        choices=[
+            ("manual", "Вручную"),
+            ("self", "Самозапись"),
+            ("group", "Группа"),
+            ("link", "По ссылке"),
+        ],
         default="self",
     )
     progress_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)

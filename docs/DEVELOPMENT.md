@@ -1,6 +1,6 @@
 # Разработка
 
-Используйте `.env.example` как основу `.env`. После изменения моделей: `python manage.py makemigrations && python manage.py migrate`. Локальная БД по умолчанию SQLite; Compose активирует PostgreSQL.
+Локальные настройки находятся в `.env`; файл готов к запуску с SQLite. После изменения моделей: `python manage.py makemigrations && python manage.py migrate`. Compose активирует PostgreSQL.
 
 ## Проверка конструктора курса
 

@@ -6,7 +6,14 @@ from django.utils import timezone
 
 from apps.courses.models import Course, CourseRun, CourseRunStaff
 from apps.learning.models import Enrollment
-from apps.organizations.models import Organization, OrganizationMembership
+from apps.organizations.models import (
+    Department,
+    Faculty,
+    Organization,
+    OrganizationMembership,
+    StudyGroup,
+    StudyGroupMember,
+)
 
 from .models import User
 
@@ -154,7 +161,9 @@ class CollegeManagementTests(TestCase):
                 "spreadsheet": SimpleUploadedFile(
                     "students.xlsx",
                     content.getvalue(),
-                    content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    content_type=(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    ),
                 ),
             },
         )
@@ -166,6 +175,34 @@ class CollegeManagementTests(TestCase):
         )
         self.assertEqual(membership.role, OrganizationMembership.Role.STUDENT)
         self.assertTrue(student.studygroupmember_set.filter(study_group__name="С-21").exists())
+
+    def test_excel_import_generates_credentials_from_group_and_full_name(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(["group", "full_name"])
+        worksheet.append(["С-22", "Петров Иван Сергеевич"])
+        content = BytesIO()
+        workbook.save(content)
+
+        response = self.client.post(
+            reverse("import-students"),
+            {
+                "organization_id": self.organization.pk,
+                "spreadsheet": SimpleUploadedFile("students.xlsx", content.getvalue()),
+            },
+        )
+
+        student = User.objects.get(last_name="Петров", first_name="Иван")
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertTrue(student.username.startswith("student-"))
+        self.assertEqual(student.email, f"{student.username}@import.local")
+        self.assertTrue(student.studygroupmember_set.filter(study_group__name="С-22").exists())
 
     def test_admin_can_assign_curator_and_manage_enrollment(self):
         teacher = User.objects.create_user("teacher@example.test", "safe-password-123")
@@ -214,3 +251,47 @@ class CollegeManagementTests(TestCase):
             ).exists()
         )
         self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())
+
+    def test_group_page_enrolls_all_active_members(self):
+        faculty = Faculty.objects.create(
+            organization=self.organization, name="Общее", code="general"
+        )
+        department = Department.objects.create(faculty=faculty, name="Общее", code="general")
+        group = StudyGroup.objects.create(
+            department=department, name="С-24", admission_year=2026, graduation_year=2030
+        )
+        student = User.objects.create_user("student@example.test", "safe-password-123")
+        OrganizationMembership.objects.create(
+            user=student,
+            organization=self.organization,
+            role=OrganizationMembership.Role.STUDENT,
+        )
+        StudyGroupMember.objects.create(study_group=group, user=student)
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Анатомия",
+            slug="anatomy",
+            created_by=self.admin,
+        )
+        now = timezone.now()
+        course_run = CourseRun.objects.create(
+            course=course,
+            title="Основной поток",
+            semester="1",
+            academic_year="2026",
+            start_at=now,
+            end_at=now,
+            enrollment_start_at=now,
+            enrollment_end_at=now,
+            status=CourseRun.Status.ACTIVE,
+        )
+
+        response = self.client.post(
+            reverse("manage-course-enrollment"),
+            {"action": "add_group", "course_run_id": course_run.pk, "group_id": group.pk},
+        )
+
+        self.assertRedirects(response, reverse("admin-dashboard"))
+        self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())
+        detail = self.client.get(reverse("study-group-detail", args=[group.pk]))
+        self.assertContains(detail, student.email)

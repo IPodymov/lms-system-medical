@@ -5,4 +5,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN DJANGO_USE_SQLITE=1 python manage.py collectstatic --noinput
-CMD ["sh","-c","python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+CMD ["sh","-c","python manage.py migrate --noinput && exec daphne -b 0.0.0.0 -p ${PORT:-8000} config.asgi:application"]

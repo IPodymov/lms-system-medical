@@ -1,4 +1,6 @@
-from datetime import date
+import secrets
+from datetime import date, datetime
+from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -9,11 +11,13 @@ from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Avg
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 
-from apps.courses.models import CourseRun, CourseRunStaff
+from apps.courses.models import CourseEnrollmentLink, CourseRun, CourseRunStaff
 from apps.learning.models import Enrollment
 from apps.organizations.models import (
     Department,
@@ -196,12 +200,13 @@ def _set_user_identity(user, *, first_name, last_name, middle_name):
     user.first_name = first_name
     user.last_name = last_name
     user.middle_name = middle_name
-    user.username = user.email
-    user.save(update_fields=["first_name", "last_name", "middle_name", "username"])
+    user.save(update_fields=["first_name", "last_name", "middle_name"])
 
 
-def _get_or_create_user(*, email, password, first_name, last_name, middle_name):
-    user, created = User.objects.get_or_create(email=email, defaults={"username": email})
+def _get_or_create_user(*, email, password, first_name, last_name, middle_name, username=None):
+    user, created = User.objects.get_or_create(
+        email=email, defaults={"username": username or email}
+    )
     if created:
         user.set_password(password)
     _set_user_identity(
@@ -213,6 +218,24 @@ def _get_or_create_user(*, email, password, first_name, last_name, middle_name):
     if created:
         user.save(update_fields=["password"])
     return user, created
+
+
+def _generated_login() -> str:
+    while True:
+        login_name = f"student-{secrets.token_hex(4)}"
+        if not User.objects.filter(username=login_name).exists():
+            return login_name
+
+
+def _generated_password() -> str:
+    return secrets.token_urlsafe(12)
+
+
+def _split_full_name(full_name: str) -> tuple[str, str, str]:
+    parts = full_name.split()
+    if len(parts) < 2:
+        raise ValueError("Укажите ФИО: фамилию и имя.")
+    return parts[1], parts[0], " ".join(parts[2:])
 
 
 def _add_student_to_group(*, user, organization, study_group, student_number=""):
@@ -237,7 +260,9 @@ def _add_student_to_group(*, user, organization, study_group, student_number="")
 def _excel_column_map(headers):
     aliases = {
         "email": {"email", "e-mail", "почта", "электронная почта"},
+        "username": {"username", "login", "логин", "имя пользователя"},
         "password": {"password", "пароль", "временный пароль"},
+        "full_name": {"full_name", "full name", "фио", "фамилия имя отчество"},
         "first_name": {"first_name", "имя"},
         "last_name": {"last_name", "фамилия"},
         "middle_name": {"middle_name", "отчество"},
@@ -335,6 +360,11 @@ def admin_dashboard(request):
         .select_related("course_run__course", "user")
         .order_by("course_run__course__title", "user__last_name", "user__email")[:100]
     )
+    enrollment_links = (
+        CourseEnrollmentLink.objects.filter(course_run__in=course_runs)
+        .select_related("course_run__course")
+        .order_by("-created_at")[:20]
+    )
     teachers = (
         OrganizationMembership.objects.filter(
             organization__in=managed_organizations,
@@ -367,6 +397,7 @@ def admin_dashboard(request):
             "students": students,
             "course_staff": course_staff,
             "course_enrollments": course_enrollments,
+            "enrollment_links": enrollment_links,
             "teachers": teachers,
             "can_add_global_teachers": request.user.is_superuser,
             "admin_documentation_url": (
@@ -488,10 +519,17 @@ def add_user(request):
     except ValidationError as error:
         messages.error(request, " ".join(error.messages))
         return redirect("admin-dashboard")
-    user, created = User.objects.get_or_create(email=email, defaults={"username": email})
+    username = request.POST.get("username", "").strip() or email
+    if User.objects.exclude(email=email).filter(username__iexact=username).exists():
+        messages.error(request, "Это имя пользователя уже занято.")
+        return redirect("admin-dashboard")
+    user, created = User.objects.get_or_create(email=email, defaults={"username": username})
     if created:
         user.set_password(password)
-        user.save(update_fields=["password"])
+        user.first_name = request.POST.get("first_name", "").strip()
+        user.last_name = request.POST.get("last_name", "").strip()
+        user.middle_name = request.POST.get("middle_name", "").strip()
+        user.save(update_fields=["password", "first_name", "last_name", "middle_name"])
     OrganizationMembership.objects.update_or_create(
         user=user, organization_id=organization, defaults={"role": role, "status": "active"}
     )
@@ -567,6 +605,43 @@ def add_study_group(request):
 
 
 @login_required
+def study_group_detail(request, group_id):
+    if not _can_manage_users(request.user):
+        raise PermissionDenied
+    study_group = get_object_or_404(_managed_study_groups(request.user), pk=group_id)
+    organization = study_group.department.faculty.organization
+    members = (
+        StudyGroupMember.objects.filter(study_group=study_group, left_at__isnull=True)
+        .select_related("user")
+        .order_by("user__last_name", "user__first_name", "user__email")
+    )
+    members = list(members)
+    memberships_by_user_id = {
+        membership.user_id: membership
+        for membership in OrganizationMembership.objects.filter(
+            organization=organization,
+            user_id__in=[member.user_id for member in members],
+        )
+    }
+    for member in members:
+        member.organization_membership = memberships_by_user_id.get(member.user_id)
+    course_runs = _managed_course_runs(request.user).filter(course__organization=organization)
+    enrollment_links = CourseEnrollmentLink.objects.filter(
+        course_run__in=course_runs
+    ).select_related("course_run__course")
+    return render(
+        request,
+        "accounts/study_group_detail.html",
+        {
+            "study_group": study_group,
+            "members": members,
+            "course_runs": course_runs.order_by("course__title", "title"),
+            "enrollment_links": enrollment_links.order_by("-created_at"),
+        },
+    )
+
+
+@login_required
 def add_student(request):
     if request.method != "POST" or not _can_manage_users(request.user):
         raise PermissionDenied
@@ -620,10 +695,12 @@ def import_students(request):
         rows = workbook.active.iter_rows(values_only=True)
         headers = next(rows, None)
         columns = _excel_column_map(headers or [])
-        required = ("group", "email", "password", "first_name", "last_name")
-        if not headers or any(columns[field] is None for field in required):
+        has_name_columns = columns["full_name"] is not None or (
+            columns["first_name"] is not None and columns["last_name"] is not None
+        )
+        if not headers or columns["group"] is None or not has_name_columns:
             raise ValueError(
-                "Excel должен содержать колонки: group, email, password, first_name, last_name."
+                "Excel должен содержать колонки group и full_name (или first_name, last_name)."
             )
         parsed_rows = []
         for row_number, row in enumerate(rows, start=2):
@@ -635,10 +712,14 @@ def import_students(request):
                 else ""
                 for field, index in columns.items()
             }
-            if not all(values[field] for field in required):
-                raise ValueError(
-                    f"Строка {row_number}: заполните группу, email, пароль, имя и фамилию."
+            if not values["group"]:
+                raise ValueError(f"Строка {row_number}: укажите номер группы.")
+            if values["full_name"]:
+                values["first_name"], values["last_name"], values["middle_name"] = _split_full_name(
+                    values["full_name"]
                 )
+            if not values["first_name"] or not values["last_name"]:
+                raise ValueError(f"Строка {row_number}: укажите ФИО студента.")
             try:
                 admission_year = int(values["admission_year"] or date.today().year)
                 graduation_year = int(values["graduation_year"] or admission_year + 4)
@@ -655,6 +736,7 @@ def import_students(request):
 
     department = _default_department(organization)
     created_students = 0
+    generated_credentials = []
     with transaction.atomic():
         for _, values, admission_year, graduation_year in parsed_rows:
             group, _ = StudyGroup.objects.get_or_create(
@@ -663,12 +745,16 @@ def import_students(request):
                 admission_year=admission_year,
                 defaults={"graduation_year": graduation_year},
             )
+            username = values["username"] or _generated_login()
+            email = values["email"].lower() or f"{username}@import.local"
+            password = values["password"] or _generated_password()
             user, created = _get_or_create_user(
-                email=values["email"].lower(),
-                password=values["password"],
+                email=email,
+                password=password,
                 first_name=values["first_name"],
                 last_name=values["last_name"],
                 middle_name=values["middle_name"],
+                username=username,
             )
             _add_student_to_group(
                 user=user,
@@ -677,6 +763,36 @@ def import_students(request):
                 student_number=values["student_number"],
             )
             created_students += int(created)
+            if created and (not values["email"] or not values["password"]):
+                generated_credentials.append(
+                    (
+                        values["last_name"],
+                        values["first_name"],
+                        values["group"],
+                        user.username,
+                        user.email,
+                        password,
+                    )
+                )
+    if generated_credentials:
+        from openpyxl import Workbook
+
+        result = Workbook()
+        worksheet = result.active
+        worksheet.title = "Учётные записи"
+        worksheet.append(
+            ["Фамилия", "Имя", "Группа", "Username", "Логин (email)", "Временный пароль"]
+        )
+        for credential in generated_credentials:
+            worksheet.append(credential)
+        content = BytesIO()
+        result.save(content)
+        response = HttpResponse(
+            content.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="student_credentials.xlsx"'
+        return response
     messages.success(
         request,
         "Импорт завершён: обработано "
@@ -780,3 +896,44 @@ def manage_course_enrollment(request):
     else:
         raise PermissionDenied
     return redirect("admin-dashboard")
+
+
+@login_required
+def create_course_enrollment_link(request):
+    if request.method != "POST" or not _can_manage_users(request.user):
+        raise PermissionDenied
+    course_run = get_object_or_404(
+        _managed_course_runs(request.user), pk=request.POST.get("course_run_id")
+    )
+    expires_at = None
+    expires_value = request.POST.get("expires_at", "")
+    if expires_value:
+        try:
+            expires_at = datetime.fromisoformat(expires_value)
+            if timezone.is_naive(expires_at):
+                expires_at = timezone.make_aware(expires_at)
+        except ValueError:
+            messages.error(request, "Укажите корректный срок действия ссылки.")
+            return redirect(request.POST.get("next") or "admin-dashboard")
+    CourseEnrollmentLink.objects.create(
+        course_run=course_run,
+        created_by=request.user,
+        label=request.POST.get("label", "").strip(),
+        expires_at=expires_at,
+    )
+    messages.success(request, "Ссылка для записи на курс создана.")
+    return redirect(request.POST.get("next") or "admin-dashboard")
+
+
+@login_required
+def deactivate_course_enrollment_link(request, link_id):
+    if request.method != "POST" or not _can_manage_users(request.user):
+        raise PermissionDenied
+    enrollment_link = get_object_or_404(
+        CourseEnrollmentLink.objects.filter(course_run__in=_managed_course_runs(request.user)),
+        pk=link_id,
+    )
+    enrollment_link.is_active = False
+    enrollment_link.save(update_fields=["is_active", "updated_at"])
+    messages.success(request, "Ссылка для записи отключена.")
+    return redirect(request.POST.get("next") or "admin-dashboard")

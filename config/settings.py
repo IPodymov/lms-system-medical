@@ -7,19 +7,19 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import dotenv_values
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Process variables always take priority. Locally, `.env.local` overrides `.env`;
-# Vercel receives values through its environment and never loads local overrides.
-environment_values = dict(dotenv_values(BASE_DIR / ".env"))
-if not os.getenv("VERCEL"):
-    environment_values.update(dotenv_values(BASE_DIR / ".env.local"))
+# Process variables always take priority. Vercel receives its production settings
+# directly through the platform environment.
+ENVIRONMENT = os.getenv("DJANGO_ENV", "production" if os.getenv("VERCEL") else "local")
+ENVIRONMENT_FILE = ".env.production" if ENVIRONMENT == "production" else ".env"
+environment_values = dict(dotenv_values(BASE_DIR / ENVIRONMENT_FILE))
 for key, value in environment_values.items():
     if value is not None:
         os.environ.setdefault(key, value)
 
 
-def database_config(database_url: str) -> dict[str, Any]:
+def database_config(url: str) -> dict[str, Any]:
     """Build Django's PostgreSQL configuration from a standard database URL."""
-    parsed = urlparse(database_url)
+    parsed = urlparse(url)
     if parsed.scheme not in {"postgres", "postgresql"}:
         raise ValueError("DATABASE_URL must use the postgres:// or postgresql:// scheme.")
     if not parsed.hostname or not parsed.path or not parsed.username:
@@ -41,7 +41,7 @@ def database_config(database_url: str) -> dict[str, Any]:
 
 
 IS_VERCEL = bool(os.getenv("VERCEL"))
-IS_DEPLOYMENT = IS_VERCEL
+IS_DEPLOYMENT = ENVIRONMENT == "production"
 _configured_secret_key = os.getenv("DJANGO_SECRET_KEY")
 if IS_DEPLOYMENT and not _configured_secret_key:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY is required on deployed environments.")
@@ -63,12 +63,14 @@ if vercel_domain:
     CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_domain}")
 CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     "rest_framework",
     "drf_spectacular",
     "django_htmx",
@@ -114,7 +116,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 if os.getenv("DJANGO_USE_SQLITE") == "1":
     DATABASES = {
-        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
 elif database_url := os.getenv("DATABASE_URL"):
     DATABASES = {"default": database_config(database_url)}
@@ -122,7 +127,10 @@ elif IS_VERCEL:
     raise ImproperlyConfigured("DATABASE_URL is required for Vercel deployments.")
 else:
     DATABASES = {
-        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
@@ -158,9 +166,42 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
 }
 SPECTACULAR_SETTINGS = {"TITLE": "University LMS API", "VERSION": "0.1.0"}
+# Redis is shared by Celery, the cache and the Channels layer in Docker. Local
+# development and tests stay usable without a running Redis instance.
+CACHE_URL = os.getenv("CACHE_URL", "")
+USE_IN_MEMORY_SERVICES = os.getenv("DJANGO_USE_SQLITE") == "1"
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
-# Vercel Functions cannot host a separate Celery worker. Execute short local tasks
-# during the request there; production queue workers remain unchanged elsewhere.
-CELERY_TASK_ALWAYS_EAGER = IS_VERCEL
-CELERY_TASK_EAGER_PROPAGATES = IS_VERCEL
+CELERY_RESULT_BACKEND = "cache+memory://" if USE_IN_MEMORY_SERVICES else CELERY_BROKER_URL
+# A local SQLite setup has no Redis worker. Vercel has no worker either, so
+# both environments execute short notification tasks within the request.
+CELERY_TASK_ALWAYS_EAGER = USE_IN_MEMORY_SERVICES or IS_VERCEL
+CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
+CELERY_TASK_STORE_EAGER_RESULT = False
+if CACHE_URL and not USE_IN_MEMORY_SERVICES:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": CACHE_URL,
+            "TIMEOUT": 300,
+            "OPTIONS": {"socket_connect_timeout": 1, "socket_timeout": 1},
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "medical-lms-local",
+            "TIMEOUT": 300,
+        }
+    }
+
+CHANNEL_REDIS_URL = "" if USE_IN_MEMORY_SERVICES else os.getenv("CHANNEL_REDIS_URL", CACHE_URL)
+if CHANNEL_REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [CHANNEL_REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}

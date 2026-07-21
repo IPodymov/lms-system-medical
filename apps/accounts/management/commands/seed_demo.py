@@ -45,7 +45,7 @@ class Command(BaseCommand):
             admission_year=2025,
             defaults={"graduation_year": 2031},
         )
-        users = []
+        users_by_email = {}
         for email, first, last, role in [
             ("admin@demo.local", "Админ", "Системный", "system_admin"),
             ("teacher@demo.local", "Анна", "Преподаватель", "teacher"),
@@ -67,8 +67,12 @@ class Command(BaseCommand):
             OrganizationMembership.objects.get_or_create(
                 organization=org, user=user, defaults={"role": role}
             )
-            users.append(user)
-        admin, teacher, s1, s2 = users
+            users_by_email[email] = user
+        teacher = users_by_email["teacher@demo.local"]
+        students = [
+            users_by_email["student1@demo.local"],
+            users_by_email["student2@demo.local"],
+        ]
         course, _ = Course.objects.get_or_create(
             organization=org,
             slug="clinical-thinking",
@@ -147,7 +151,7 @@ class Command(BaseCommand):
         QuizQuestion.objects.get_or_create(
             quiz=quiz, question=question, defaults={"position": 1, "points": 1}
         )
-        for student in (s1, s2):
+        for student in students:
             Enrollment.objects.get_or_create(
                 course_run=run,
                 user=student,

@@ -2,6 +2,12 @@ services:
   web:
     build: .
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://lms:lms@postgres:5432/lms
+      CACHE_URL: redis://redis:6379/1
+      CHANNEL_REDIS_URL: redis://redis:6379/2
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes: [".:/app"]
     ports: ["8000:8000"]
     depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
@@ -17,11 +23,23 @@ services:
     build: .
     command: celery -A config worker -l INFO
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://lms:lms@postgres:5432/lms
+      CACHE_URL: redis://redis:6379/1
+      CHANNEL_REDIS_URL: redis://redis:6379/2
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on: [redis, postgres]
   celery_beat:
     build: .
     command: celery -A config beat -l INFO
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://lms:lms@postgres:5432/lms
+      CACHE_URL: redis://redis:6379/1
+      CHANNEL_REDIS_URL: redis://redis:6379/2
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on: [redis]
   nginx:
     image: nginx:alpine

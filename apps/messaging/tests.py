@@ -1,7 +1,11 @@
+import json
 from datetime import timedelta
 from uuid import uuid4
 
-from django.test import TestCase
+from asgiref.sync import async_to_sync
+from channels.db import database_sync_to_async
+from channels.testing import ApplicationCommunicator
+from django.test import TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,10 +15,11 @@ from apps.learning.models import Enrollment
 from apps.notifications.models import Notification
 from apps.organizations.models import Organization
 
+from .consumers import CourseChatConsumer, DirectChatConsumer
 from .models import CourseMessage, DirectMessage
 
 
-class MessagingTests(TestCase):
+class MessagingTests(TransactionTestCase):
     def setUp(self):
         self.sender = User.objects.create_user("sender@example.test", "password")
         self.recipient = User.objects.create_user("recipient@example.test", "password")
@@ -52,6 +57,15 @@ class MessagingTests(TestCase):
             Notification.objects.filter(user=self.recipient, type="direct_message").exists()
         )
 
+    def test_direct_thread_shows_recipient_summary_before_message_form(self):
+        self.client.force_login(self.sender)
+
+        response = self.client.get(reverse("direct-message-thread", args=[self.recipient.pk]))
+
+        self.assertContains(response, "Краткая информация о собеседнике")
+        self.assertContains(response, f"@{self.recipient.username}")
+        self.assertContains(response, self.recipient.email)
+
     def test_repeated_direct_message_post_with_same_token_creates_one_message(self):
         self.client.force_login(self.sender)
         url = reverse("direct-message-thread", args=[self.recipient.pk])
@@ -82,6 +96,21 @@ class MessagingTests(TestCase):
         response = self.client.get(reverse("direct-messages"))
         self.assertContains(response, self.recipient.email)
 
+    def test_contact_search_finds_all_active_users_by_full_name(self):
+        searched_user = User.objects.create_user(
+            "ivanov@example.test",
+            "password",
+            first_name="Иван",
+            last_name="Иванов",
+            middle_name="Иванович",
+        )
+        self.client.force_login(self.sender)
+
+        response = self.client.get(reverse("direct-messages"), {"q": "Иванов Иван"})
+
+        self.assertContains(response, searched_user.get_full_name())
+        self.assertNotContains(response, self.recipient.email)
+
     def test_course_chat_is_available_only_to_course_participants(self):
         self.client.force_login(self.sender)
         response = self.client.post(
@@ -97,3 +126,63 @@ class MessagingTests(TestCase):
         self.client.force_login(outsider)
         response = self.client.get(reverse("course-chat", args=[self.course_run.pk]))
         self.assertEqual(response.status_code, 403)
+
+    def test_direct_chat_websocket_persists_and_returns_a_message(self):
+        async def communicate():
+            communicator = ApplicationCommunicator(
+                DirectChatConsumer.as_asgi(),
+                {
+                    "type": "websocket",
+                    "path": f"/ws/messages/direct/{self.recipient.pk}/",
+                    "headers": [],
+                    "query_string": b"",
+                    "user": self.sender,
+                    "url_route": {"kwargs": {"user_id": str(self.recipient.pk)}},
+                },
+            )
+            await communicator.send_input({"type": "websocket.connect"})
+            self.assertEqual((await communicator.receive_output())["type"], "websocket.accept")
+            await communicator.send_input(
+                {
+                    "type": "websocket.receive",
+                    "text": json.dumps({"body": "Realtime", "client_token": str(uuid4())}),
+                }
+            )
+            return await communicator.receive_output()
+
+        response = async_to_sync(communicate)()
+
+        self.assertEqual(response["type"], "websocket.send")
+        self.assertEqual(json.loads(response["text"])["message"]["body"], "Realtime")
+        self.assertTrue(DirectMessage.objects.filter(body="Realtime").exists())
+
+    def test_course_chat_websocket_closes_when_access_is_revoked(self):
+        async def communicate():
+            communicator = ApplicationCommunicator(
+                CourseChatConsumer.as_asgi(),
+                {
+                    "type": "websocket",
+                    "path": f"/ws/messages/course/{self.course_run.pk}/",
+                    "headers": [],
+                    "query_string": b"",
+                    "user": self.sender,
+                    "url_route": {"kwargs": {"run_id": str(self.course_run.pk)}},
+                },
+            )
+            await communicator.send_input({"type": "websocket.connect"})
+            self.assertEqual((await communicator.receive_output())["type"], "websocket.accept")
+            await database_sync_to_async(
+                Enrollment.objects.filter(course_run=self.course_run, user=self.sender).delete
+            )()
+            await communicator.send_input(
+                {
+                    "type": "websocket.receive",
+                    "text": json.dumps({"body": "Нет доступа", "client_token": str(uuid4())}),
+                }
+            )
+            return await communicator.receive_output()
+
+        response = async_to_sync(communicate)()
+
+        self.assertEqual(response, {"type": "websocket.close", "code": 4403})
+        self.assertFalse(CourseMessage.objects.filter(body="Нет доступа").exists())
