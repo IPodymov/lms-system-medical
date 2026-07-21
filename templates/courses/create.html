@@ -1,13 +1,26 @@
 {% extends 'base.html' %}
-{% block title %}Новый курс — МедЛМС{% endblock %}
+{% block title %}Новый курс | МедЛМС{% endblock %}
 {% block content %}
-<div class="form-page"><p class="eyebrow">Шаг 1 из 2</p><h1>Создать курс</h1><p>Задайте название и описание. На следующем шаге соберёте программу из тем, материалов и тестов.</p>
-<form method="post" enctype="multipart/form-data" class="form-card">{% csrf_token %}
-  <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}"></label>
-  <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}"></label>
-  <label>Подробное описание<textarea name="description" rows="6">{{ request.POST.description }}</textarea></label>
-  <fieldset><legend>Сроки обучения</legend><p>Необязательно: их можно изменить в конструкторе курса.</p><label>Дата начала<input type="date" name="course_start" value="{{ request.POST.course_start }}"></label><label>Дата окончания<input type="date" name="course_end" value="{{ request.POST.course_end }}"></label></fieldset>
-  <label>Обложка (необязательно)<input type="file" name="cover" accept="image/*"></label>
-  <button>Продолжить к программе</button>
-</form></div>
+<section class="course-create-layout">
+  <div class="course-create-intro">
+    <p class="eyebrow">Новый курс</p>
+    <h1>Начните с основы курса</h1>
+    <p>Сначала сохраните карточку курса. Затем в конструкторе соберите программу: разделы, темы внутри них и учебные блоки для каждой темы.</p>
+    <ol class="course-structure-guide" aria-label="Структура курса">
+      <li><span>1</span><div><strong>Курс</strong><small>название, описание и сроки</small></div></li>
+      <li><span>2</span><div><strong>Раздел</strong><small>крупная часть программы, например «Модуль 1»</small></div></li>
+      <li><span>3</span><div><strong>Тема</strong><small>конкретное занятие внутри раздела</small></div></li>
+      <li><span>4</span><div><strong>Блок</strong><small>лекция, файл или тест внутри темы</small></div></li>
+    </ol>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="form-card course-create-form">{% csrf_token %}
+    <div class="form-card-heading"><p class="eyebrow">Шаг 1 из 2</p><h2>Карточка курса</h2><p>Эти данные увидят слушатели в каталоге.</p></div>
+    <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}" placeholder="Например, Основы клинического мышления"></label>
+    <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}" placeholder="Одно предложение для каталога"></label>
+    <label>Подробное описание<textarea name="description" rows="6" placeholder="Что изучит слушатель и для кого предназначен курс">{{ request.POST.description }}</textarea></label>
+    <fieldset><legend>Сроки обучения</legend><p>Необязательно. Их можно задать или изменить позже в настройках курса.</p><div class="course-date-fields"><label>Дата начала<input type="date" name="course_start" value="{{ request.POST.course_start }}"></label><label>Дата окончания<input type="date" name="course_end" value="{{ request.POST.course_end }}"></label></div></fieldset>
+    <label>Обложка <small>необязательно</small><input type="file" name="cover" accept="image/*"></label>
+    <button>Сохранить и перейти к программе</button>
+  </form>
+</section>
 {% endblock %}

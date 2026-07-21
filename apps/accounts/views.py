@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
+from openpyxl import Workbook, load_workbook
 
 from apps.courses.models import CourseEnrollmentLink, CourseRun, CourseRunStaff
 from apps.learning.models import Enrollment
@@ -689,8 +690,6 @@ def import_students(request):
         messages.error(request, "Выберите организацию и Excel-файл формата .xlsx.")
         return redirect("admin-dashboard")
     try:
-        from openpyxl import load_workbook
-
         workbook = load_workbook(spreadsheet, read_only=True, data_only=True)
         rows = workbook.active.iter_rows(values_only=True)
         headers = next(rows, None)
@@ -775,8 +774,6 @@ def import_students(request):
                     )
                 )
     if generated_credentials:
-        from openpyxl import Workbook
-
         result = Workbook()
         worksheet = result.active
         worksheet.title = "Учётные записи"

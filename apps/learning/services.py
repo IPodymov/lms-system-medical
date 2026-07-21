@@ -4,6 +4,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.courses.models import ContentBlock, CourseRun
+from apps.notifications.tasks import create_notification
 
 from .models import ContentProgress, Enrollment
 
@@ -75,8 +76,6 @@ def enroll(*, course_run: CourseRun, user, source: str = "self") -> Enrollment:
         enrollment = Enrollment.objects.get(course_run=run, user=user)
         created = False
     if created:
-        from apps.notifications.tasks import create_notification
-
         transaction.on_commit(
             lambda: create_notification.delay(
                 str(user.pk), "enrollment", "Вы записаны на курс", run.title

@@ -1,4 +1,3 @@
-from django.conf import settings  # pylint: disable=unused-import
 from django.db import models
 
 from apps.accounts.models import TimeStampedModel, UUIDModel
@@ -28,7 +27,7 @@ class Question(UUIDModel, TimeStampedModel):
         SHORT = "short_text", "Короткий ответ"
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    author = models.ForeignKey("accounts.User", on_delete=models.PROTECT)
     type = models.CharField(max_length=20, choices=Type)
     text = models.TextField()
     explanation = models.TextField(blank=True)

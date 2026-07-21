@@ -1,57 +1,43 @@
 {% extends 'base.html' %}
-{% block title %}Конструктор курса — {{ course.title }}{% endblock %}
+{% block title %}Программа курса | {{ course.title }}{% endblock %}
 {% block content %}
-<div class="builder-header">
-  <div><p class="eyebrow">Конструктор курса</p><h1>{{ course.title }}</h1><p>Собирайте программу из разделов, тем и учебных блоков. Перетаскивайте блоки внутри темы, чтобы задать порядок.</p></div>
+<section class="builder-header">
+  <div><p class="eyebrow">Программа курса</p><h1>{{ course.title }}</h1><p>Соберите путь слушателя: сначала добавьте раздел, в раздел добавьте темы, а в каждую тему - лекции, файлы и тесты.</p></div>
   <div class="builder-actions">{% if active_run %}<span class="course-open-status">Запись открыта</span>{% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="open_enrollment"><button>Открыть курс для записи</button></form>{% endif %}{% if active_run %}{% if is_editor_enrolled %}<span class="course-open-status">Вы уже в курсе</span>{% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="enroll_editor"><button class="button-secondary">Добавить меня в курс</button></form>{% endif %}{% endif %}<a class="button-link" href="{% url 'course-detail' course.id %}">{% if active_run %}Открыть курс{% else %}Открыть черновик{% endif %}</a></div>
-</div>
+</section>
+
+<section class="builder-flow" aria-label="Структура программы"><span>1. Раздел</span><i aria-hidden="true">→</i><span>2. Тема</span><i aria-hidden="true">→</i><span>3. Учебный блок</span></section>
 
 <div class="builder-layout">
   <aside class="builder-sidebar card">
-    <h2>Добавить в программу</h2>
-    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_section">
-      <label>Новый раздел<input name="section_title" required placeholder="Например, Модуль 1"></label>
-      <label>Описание<textarea name="section_description" rows="2"></textarea></label><button>Добавить раздел</button>
-    </form>
-    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_lesson">
-      <label>Раздел<input name="section_title" required list="section-names" placeholder="Выберите или введите"></label><datalist id="section-names">{% for section in sections %}<option value="{{ section.title }}">{% endfor %}</datalist>
-      <label>Название темы<input name="lesson_title" required placeholder="Например, Анатомия сердца"></label>
-      <label>Краткое описание<textarea name="lesson_description" rows="2"></textarea></label><button>Добавить тему</button>
-    </form>
+    <p class="eyebrow">Следующий шаг</p><h2>Добавьте раздел</h2><p class="builder-sidebar-copy">Раздел объединяет несколько тем. Например: «Модуль 1. Анатомия».</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_section"><label>Название раздела<input name="section_title" required placeholder="Модуль 1. Введение"></label><label>Краткое описание <small>необязательно</small><textarea name="section_description" rows="3" placeholder="Что будет внутри этого раздела"></textarea></label><button>Добавить раздел</button></form>
+    <div class="builder-sidebar-hint"><strong>Что дальше?</strong><span>Откройте созданный раздел справа и добавьте в него первую тему.</span></div>
   </aside>
 
   <section class="builder-canvas">
     {% for section in sections %}
       <section class="builder-section">
         <div class="builder-section-heading"><div><span>Раздел {{ forloop.counter }}</span><h2>{{ section.title }}</h2>{% if section.description %}<p>{{ section.description }}</p>{% endif %}</div><small>{{ section.lessons.all|length }} тем</small></div>
+        <details class="add-topic" {% if not section.lessons.all %}open{% endif %}>
+          <summary><span>+</span> Добавить тему в раздел</summary>
+          <form method="post" class="topic-create-form">{% csrf_token %}<input type="hidden" name="action" value="add_lesson"><input type="hidden" name="section_title" value="{{ section.title }}"><label>Название темы<input name="lesson_title" required placeholder="Например, Строение сердца"></label><label>Краткое описание <small>необязательно</small><textarea name="lesson_description" rows="2" placeholder="Что слушатель изучит в этой теме"></textarea></label><button>Добавить тему</button></form>
+        </details>
         {% for lesson in section.lessons.all %}
           <article class="topic-card">
-            <header><div><span class="topic-kicker">Тема {{ forloop.counter }}</span><h3>{{ lesson.title }}</h3>{% if lesson.description %}<p>{{ lesson.description }}</p>{% endif %}</div><a class="text-action" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">+ Тест</a></header>
-            <form method="post" class="block-sort-form" data-sort-form>{% csrf_token %}<input type="hidden" name="action" value="reorder_blocks">
-              <div class="block-dropzone" data-dropzone aria-label="Блоки темы {{ lesson.title }}">
-                {% for block in lesson.blocks.all %}
-                  <div class="content-block" draggable="true" data-block-id="{{ block.id }}"><span class="drag-handle" aria-hidden="true">⠿</span><input type="hidden" name="block_id" value="{{ block.id }}"><div><strong>{{ block.title }}</strong><small>{{ block.get_type_display }}</small></div>{% if block.quiz %}<a href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>{% endif %}</div>
-                {% empty %}<p class="dropzone-empty">Перетащите сюда блоки или добавьте первый ниже.</p>{% endfor %}
-              </div>
-              {% if lesson.blocks.all %}<button class="button-secondary save-order" type="submit">Сохранить порядок</button>{% endif %}
-            </form>
-            <details class="add-block"><summary>+ Добавить блок</summary>
-              <div class="block-forms">
-                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_text"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><label>Текстовый блок<input name="text_title" required placeholder="Название"></label><label>Содержание<textarea name="text_body" required rows="4"></textarea></label><button>Добавить текст</button></form>
-                <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><label>Файл<input name="material_title" required placeholder="Название материала"></label><label>Описание<textarea name="material_description" rows="2"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Загрузить</button></form>
-                <a class="quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест для темы <span>→</span></a>
-              </div>
-            </details>
+            <header><div><span class="topic-kicker">Тема {{ forloop.counter }}</span><h3>{{ lesson.title }}</h3>{% if lesson.description %}<p>{{ lesson.description }}</p>{% endif %}</div><a class="text-action" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест</a></header>
+            <form method="post" class="block-sort-form" data-sort-form>{% csrf_token %}<input type="hidden" name="action" value="reorder_blocks"><div class="block-dropzone" data-dropzone aria-label="Блоки темы {{ lesson.title }}">{% for block in lesson.blocks.all %}<div class="content-block" draggable="true" data-block-id="{{ block.id }}"><span class="drag-handle" aria-label="Переместить блок">⠿</span><input type="hidden" name="block_id" value="{{ block.id }}"><div><strong>{{ block.title }}</strong><small>{{ block.get_type_display }}</small></div>{% if block.quiz %}<a href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>{% endif %}</div>{% empty %}<p class="dropzone-empty">В теме пока нет блоков. Выберите тип материала ниже.</p>{% endfor %}</div>{% if lesson.blocks.all %}<button class="button-secondary save-order" type="submit">Сохранить порядок</button>{% endif %}</form>
+            <details class="add-block" {% if not lesson.blocks.all %}open{% endif %}><summary><span>+</span> Добавить учебный блок</summary><p class="add-block-intro">Блок - это единица обучения внутри темы. Выберите подходящий тип.</p><div class="block-forms"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_text"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Текст или лекция</h4><label>Название блока<input name="text_title" required placeholder="Основные понятия"></label><label>Содержание<textarea name="text_body" required rows="4" placeholder="Введите текст для слушателей"></textarea></label><button>Добавить текст</button></form><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Файл или материал</h4><label>Название блока<input name="material_title" required placeholder="Атлас строения сердца"></label><label>Комментарий <small>необязательно</small><textarea name="material_description" rows="2"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Загрузить файл</button></form><a class="quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}"><span>Проверка знаний</span><strong>Создать тест для темы →</strong></a></div></details>
           </article>
-        {% empty %}<p class="dropzone-empty">Добавьте первую тему в этот раздел.</p>{% endfor %}
+        {% endfor %}
       </section>
-    {% empty %}<section class="empty-state"><h2>Программа пока пуста</h2><p>Начните с раздела, затем добавьте в него темы и учебные блоки.</p></section>{% endfor %}
+    {% empty %}<section class="empty-state builder-empty"><p class="eyebrow">Программа пуста</p><h2>Начните с первого раздела</h2><p>После создания раздела вы сможете добавить в него тему, а затем наполнить тему учебными блоками.</p></section>{% endfor %}
   </section>
 </div>
 
 <div class="editor-bottom-grid">
-  <section class="card"><h2>Дополнительные материалы</h2><p>Добавьте полезные ссылки, доступные всем слушателям курса.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_material_link"><label>Название<input name="link_title" required placeholder="Клинические рекомендации"></label><label>Ссылка<input type="url" name="link_url" required placeholder="https://"></label><label>Комментарий<textarea name="link_description" rows="2"></textarea></label><button>Добавить ссылку</button></form><ul class="link-list">{% for item in material_links %}<li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }} ↗</a>{% if item.description %}<small>{{ item.description }}</small>{% endif %}</li>{% empty %}<li>Ссылок пока нет.</li>{% endfor %}</ul></section>
-  <section class="card"><h2>Параметры курса</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="save_course"><label>Наименование<input name="title" required value="{{ course.title }}"></label><label>Краткое описание<input name="short_description" value="{{ course.short_description }}"></label><label>Описание<textarea name="description" rows="4">{{ course.description }}</textarea></label><label>Обложка<input type="file" name="cover" accept="image/*"></label><label>Статус<select name="status">{% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>Сохранить изменения</button></form><form method="post" class="schedule-form">{% csrf_token %}<input type="hidden" name="action" value="save_schedule"><h3>Сроки обучения</h3><p>Создатель курса может изменить даты в любой момент.</p><label>Начало<input type="date" name="course_start" required value="{{ schedule_run.start_at|date:'Y-m-d' }}"></label><label>Окончание<input type="date" name="course_end" required value="{{ schedule_run.end_at|date:'Y-m-d' }}"></label><button class="button-secondary">Сохранить сроки</button></form></section>
+  <section class="card"><p class="eyebrow">Общие материалы</p><h2>Полезные ссылки к курсу</h2><p>Эти материалы доступны всему курсу, а не отдельной теме.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_material_link"><label>Название<input name="link_title" required placeholder="Клинические рекомендации"></label><label>Ссылка<input type="url" name="link_url" required placeholder="https://"></label><label>Комментарий <small>необязательно</small><textarea name="link_description" rows="2"></textarea></label><button>Добавить ссылку</button></form><ul class="link-list">{% for item in material_links %}<li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }} ↗</a>{% if item.description %}<small>{{ item.description }}</small>{% endif %}</li>{% empty %}<li>Ссылок пока нет.</li>{% endfor %}</ul></section>
+  <section class="card"><p class="eyebrow">Настройки</p><h2>Карточка и сроки курса</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="save_course"><label>Наименование<input name="title" required value="{{ course.title }}"></label><label>Краткое описание<input name="short_description" value="{{ course.short_description }}"></label><label>Описание<textarea name="description" rows="4">{{ course.description }}</textarea></label><label>Обложка<input type="file" name="cover" accept="image/*"></label><label>Статус<select name="status">{% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>Сохранить изменения</button></form><form method="post" class="schedule-form">{% csrf_token %}<input type="hidden" name="action" value="save_schedule"><h3>Сроки обучения</h3><p>Можно изменить в любой момент.</p><div class="course-date-fields"><label>Начало<input type="date" name="course_start" required value="{{ schedule_run.start_at|date:'Y-m-d' }}"></label><label>Окончание<input type="date" name="course_end" required value="{{ schedule_run.end_at|date:'Y-m-d' }}"></label></div><button class="button-secondary">Сохранить сроки</button></form></section>
 </div>
 <script>
 document.querySelectorAll('[data-dropzone]').forEach((zone) => {

@@ -43,6 +43,7 @@ DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 
 [tool.pylint.main]
+fail-on = ["E", "F"]
 load-plugins = ["pylint_django"]
 init-hook = "import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')"
 ignore-paths = [".*/migrations/.*"]
@@ -50,7 +51,6 @@ ignore-paths = [".*/migrations/.*"]
 [tool.pylint.messages_control]
 disable = [
     "duplicate-code",
-    "import-outside-toplevel",
     "missing-class-docstring",
     "missing-function-docstring",
     "missing-module-docstring",

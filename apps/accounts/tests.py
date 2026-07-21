@@ -1,8 +1,10 @@
 from io import BytesIO
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from openpyxl import Workbook
 
 from apps.courses.models import Course, CourseRun, CourseRunStaff
 from apps.learning.models import Enrollment
@@ -144,9 +146,6 @@ class CollegeManagementTests(TestCase):
         self.client.force_login(self.admin)
 
     def test_excel_import_creates_group_student_and_membership(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        from openpyxl import Workbook
-
         workbook = Workbook()
         worksheet = workbook.active
         worksheet.append(["group", "email", "password", "first_name", "last_name"])
@@ -177,9 +176,6 @@ class CollegeManagementTests(TestCase):
         self.assertTrue(student.studygroupmember_set.filter(study_group__name="С-21").exists())
 
     def test_excel_import_generates_credentials_from_group_and_full_name(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        from openpyxl import Workbook
-
         workbook = Workbook()
         worksheet = workbook.active
         worksheet.append(["group", "full_name"])
