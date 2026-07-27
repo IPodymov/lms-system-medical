@@ -460,6 +460,46 @@ def course_edit(request, course_id):
                 )
                 TextContent.objects.create(content_block=block, body=body)
                 messages.success(request, "Текст лекции добавлен.")
+        elif action == "edit_lesson":
+            lesson = get_object_or_404(
+                Lesson, pk=request.POST.get("lesson_id"), section__course=course
+            )
+            title = request.POST.get("lesson_title", "").strip()
+            if not title:
+                messages.error(request, "Укажите название темы.")
+            else:
+                lesson.title = title
+                lesson.description = request.POST.get("lesson_description", "").strip()
+                lesson.save(update_fields=["title", "description"])
+                messages.success(request, "Тема обновлена.")
+        elif action == "edit_block":
+            block = get_object_or_404(
+                ContentBlock,
+                pk=request.POST.get("block_id"),
+                lesson__section__course=course,
+            )
+            title = request.POST.get("block_title", "").strip()
+            if not title:
+                messages.error(request, "Укажите название блока.")
+            else:
+                with transaction.atomic():
+                    block.title = title
+                    block.save(update_fields=["title"])
+                    if block.type == ContentBlock.Type.TEXT:
+                        block.text_content.body = request.POST.get("text_body", "").strip()
+                        block.text_content.save(update_fields=["body"])
+                    elif block.type == ContentBlock.Type.FILE:
+                        file_content = block.file_content
+                        file_content.description = request.POST.get("material_description", "").strip()
+                        if replacement_file := request.FILES.get("file"):
+                            file_content.file = replacement_file
+                            file_content.save(update_fields=["description", "file"])
+                        else:
+                            file_content.save(update_fields=["description"])
+                    elif block.type == ContentBlock.Type.QUIZ:
+                        block.quiz.title = title
+                        block.quiz.save(update_fields=["title"])
+                messages.success(request, "Блок обновлён.")
         elif action == "add_material_link":
             title = request.POST.get("link_title", "").strip()
             url = request.POST.get("link_url", "").strip()
@@ -515,14 +555,31 @@ def course_edit(request, course_id):
                         )
                     QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
                 messages.success(request, "Тест добавлен в программу курса.")
+        elif action == "delete_block":
+            block = get_object_or_404(
+                ContentBlock,
+                pk=request.POST.get("delete_block_id"),
+                lesson__section__course=course,
+            )
+            lesson = block.lesson
+            block.delete()
+            for position, remaining_block in enumerate(lesson.blocks.order_by("position"), start=1):
+                if remaining_block.position != position:
+                    remaining_block.position = position
+                    remaining_block.save(update_fields=["position"])
+            messages.success(request, "Блок удалён.")
         elif action == "reorder_blocks":
+            lesson = get_object_or_404(
+                Lesson, pk=request.POST.get("lesson_id"), section__course=course
+            )
             block_ids = request.POST.getlist("block_id")
             blocks = {
                 str(block.pk): block
-                for block in ContentBlock.objects.filter(
-                    pk__in=block_ids, lesson__section__course=course
-                )
+                for block in ContentBlock.objects.filter(pk__in=block_ids, lesson=lesson)
             }
+            if set(block_ids) != set(blocks) or len(block_ids) != lesson.blocks.count():
+                messages.error(request, "Не удалось сохранить порядок блоков.")
+                return redirect("course-edit", course.pk)
             # First move positions outside their current range to avoid a transient
             # unique-constraint clash when two neighbouring blocks are swapped.
             for block in blocks.values():
@@ -534,6 +591,26 @@ def course_edit(request, course_id):
                     block.position = position
                     block.save(update_fields=["position"])
             messages.success(request, "Порядок блоков сохранён.")
+        elif action == "reorder_lessons":
+            section = get_object_or_404(
+                CourseSection, pk=request.POST.get("section_id"), course=course
+            )
+            lesson_ids = request.POST.getlist("lesson_id")
+            lessons = {
+                str(lesson.pk): lesson
+                for lesson in Lesson.objects.filter(pk__in=lesson_ids, section=section)
+            }
+            if set(lesson_ids) != set(lessons) or len(lesson_ids) != section.lessons.count():
+                messages.error(request, "Не удалось сохранить порядок тем.")
+                return redirect("course-edit", course.pk)
+            for lesson in lessons.values():
+                lesson.position += len(lesson_ids) + 1000
+                lesson.save(update_fields=["position"])
+            for position, lesson_id in enumerate(lesson_ids, start=1):
+                lesson = lessons[lesson_id]
+                lesson.position = position
+                lesson.save(update_fields=["position"])
+            messages.success(request, "Порядок тем сохранён.")
         return redirect("course-edit", course.pk)
     blocks = (
         ContentBlock.objects.filter(lesson__section__course=course)
@@ -572,15 +649,51 @@ def quiz_create(request, course_id):
         quiz_title = request.POST.get("quiz_title", "").strip()
         text = request.POST.get("question_text", "").strip()
         options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
+        is_image_question = request.POST.get("question_kind") == "image"
+        question_type = (
+            Question.Type.MULTIPLE
+            if request.POST.get("answer_mode") == "multiple"
+            else Question.Type.SINGLE
+        )
+        correct_options = request.POST.getlist("correct_option")
         try:
-            correct = int(request.POST.get("correct_option", ""))
+            correct_indexes = {int(value) for value in correct_options}
         except ValueError:
-            correct = -1
+            correct_indexes = set()
+        markers = []
+        if is_image_question:
+            marker_x_values = request.POST.getlist("marker_x")
+            marker_y_values = request.POST.getlist("marker_y")
+            if len(marker_x_values) != len(marker_y_values):
+                marker_x_values = []
+            for x, y in zip(marker_x_values, marker_y_values):
+                try:
+                    marker_x, marker_y = float(x), float(y)
+                except ValueError:
+                    markers = []
+                    break
+                if not 0 <= marker_x <= 100 or not 0 <= marker_y <= 100:
+                    markers = []
+                    break
+                markers.append((marker_x, marker_y))
+            options = [f"Область {position}" for position in range(1, len(markers) + 1)]
         lesson = _selected_lesson(course, request.POST.get("lesson_id"))
-        if not quiz_title or not text or len(options) < 2 or correct not in range(len(options)):
+        minimum_options = 1 if is_image_question else 2
+        has_valid_correct_count = (
+            len(correct_indexes) >= 1
+            and correct_indexes.issubset(range(len(options)))
+            and (question_type == Question.Type.MULTIPLE or len(correct_indexes) == 1)
+        )
+        if (
+            not quiz_title
+            or not text
+            or len(options) < minimum_options
+            or not has_valid_correct_count
+            or (is_image_question and (not request.FILES.get("question_image") or not markers))
+        ):
             messages.error(
                 request,
-                "Заполните тест, минимум два варианта и отметьте правильный ответ.",
+                "Заполните вопрос, добавьте области на изображение и отметьте правильные ответы.",
             )
         else:
             with transaction.atomic():
@@ -594,15 +707,18 @@ def quiz_create(request, course_id):
                 question = Question.objects.create(
                     organization=course.organization,
                     author=request.user,
-                    type=Question.Type.SINGLE,
+                    type=question_type,
                     text=text,
+                    image=request.FILES.get("question_image") if is_image_question else None,
                 )
                 for position, option in enumerate(options, start=1):
                     QuestionOption.objects.create(
                         question=question,
                         text=option,
                         position=position,
-                        is_correct=position - 1 == correct,
+                        marker_x=markers[position - 1][0] if is_image_question else None,
+                        marker_y=markers[position - 1][1] if is_image_question else None,
+                        is_correct=position - 1 in correct_indexes,
                     )
                 QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
             messages.success(request, "Тест добавлен в программу курса.")

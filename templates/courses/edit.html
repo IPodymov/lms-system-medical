@@ -23,13 +23,18 @@
           <summary><span>+</span> Добавить тему в раздел</summary>
           <form method="post" class="topic-create-form">{% csrf_token %}<input type="hidden" name="action" value="add_lesson"><input type="hidden" name="section_title" value="{{ section.title }}"><label>Название темы<input name="lesson_title" required placeholder="Например, Строение сердца"></label><label>Краткое описание <small>необязательно</small><textarea name="lesson_description" rows="2" placeholder="Что слушатель изучит в этой теме"></textarea></label><button>Добавить тему</button></form>
         </details>
-        {% for lesson in section.lessons.all %}
-          <article class="topic-card">
-            <header><div><span class="topic-kicker">Тема {{ forloop.counter }}</span><h3>{{ lesson.title }}</h3>{% if lesson.description %}<p>{{ lesson.description }}</p>{% endif %}</div><a class="text-action" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест</a></header>
-            <form method="post" class="block-sort-form" data-sort-form>{% csrf_token %}<input type="hidden" name="action" value="reorder_blocks"><div class="block-dropzone" data-dropzone aria-label="Блоки темы {{ lesson.title }}">{% for block in lesson.blocks.all %}<div class="content-block" draggable="true" data-block-id="{{ block.id }}"><span class="drag-handle" aria-label="Переместить блок">⠿</span><input type="hidden" name="block_id" value="{{ block.id }}"><div><strong>{{ block.title }}</strong><small>{{ block.get_type_display }}</small></div>{% if block.quiz %}<a href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>{% endif %}</div>{% empty %}<p class="dropzone-empty">В теме пока нет блоков. Выберите тип материала ниже.</p>{% endfor %}</div>{% if lesson.blocks.all %}<button class="button-secondary save-order" type="submit">Сохранить порядок</button>{% endif %}</form>
-            <details class="add-block" {% if not lesson.blocks.all %}open{% endif %}><summary><span>+</span> Добавить учебный блок</summary><p class="add-block-intro">Блок - это единица обучения внутри темы. Выберите подходящий тип.</p><div class="block-forms"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_text"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Текст или лекция</h4><label>Название блока<input name="text_title" required placeholder="Основные понятия"></label><label>Содержание<textarea name="text_body" required rows="4" placeholder="Введите текст для слушателей"></textarea></label><button>Добавить текст</button></form><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Файл или материал</h4><label>Название блока<input name="material_title" required placeholder="Атлас строения сердца"></label><label>Комментарий <small>необязательно</small><textarea name="material_description" rows="2"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Загрузить файл</button></form><a class="quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}"><span>Проверка знаний</span><strong>Создать тест для темы →</strong></a></div></details>
-          </article>
-        {% endfor %}
+        <div class="topic-dropzone" data-lesson-dropzone data-sort-form="lesson-sort-{{ section.id }}">
+          {% for lesson in section.lessons.all %}
+            <article class="topic-card" draggable="true" data-lesson-id="{{ lesson.id }}"><input form="lesson-sort-{{ section.id }}" type="hidden" name="lesson_id" value="{{ lesson.id }}">
+              <header><div class="topic-heading"><span class="topic-drag-handle" data-drag-handle title="Переместить тему">⠿</span><div><span class="topic-kicker">Тема {{ forloop.counter }}</span><h3>{{ lesson.title }}</h3>{% if lesson.description %}<p>{{ lesson.description }}</p>{% endif %}</div></div><a class="text-action" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест</a></header>
+              <details class="edit-details"><summary>Редактировать тему</summary><form method="post" class="edit-form">{% csrf_token %}<input type="hidden" name="action" value="edit_lesson"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><label>Название темы<input name="lesson_title" required value="{{ lesson.title }}"></label><label>Описание<textarea name="lesson_description" rows="2">{{ lesson.description }}</textarea></label><button class="button-secondary">Сохранить тему</button></form></details>
+              <div class="block-dropzone" data-block-dropzone data-sort-form="block-sort-{{ lesson.id }}">{% for block in lesson.blocks.all %}<div class="content-block" draggable="true" data-block-id="{{ block.id }}"><input form="block-sort-{{ lesson.id }}" type="hidden" name="block_id" value="{{ block.id }}"><span class="drag-handle" data-drag-handle title="Переместить блок">⠿</span><div><strong>{{ block.title }}</strong><small>{{ block.get_type_display }}</small></div><details class="block-edit-details"><summary>Редактировать</summary><form method="post" enctype="multipart/form-data" class="edit-form">{% csrf_token %}<input type="hidden" name="action" value="edit_block"><input type="hidden" name="block_id" value="{{ block.id }}"><label>Название блока<input name="block_title" required value="{{ block.title }}"></label>{% if block.type == 'text' %}<label>Содержание<textarea name="text_body" required rows="5">{{ block.text_content.body }}</textarea></label>{% elif block.type == 'file' %}<label>Комментарий<textarea name="material_description" rows="3">{{ block.file_content.description }}</textarea></label><label>Заменить файл <small>необязательно</small><input type="file" name="file"></label>{% endif %}<button class="button-secondary">Сохранить блок</button></form></details>{% if block.quiz %}<a href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>{% endif %}<button class="button-danger" type="submit" form="delete-block-{{ block.id }}" onclick="return confirm('Удалить блок без возможности восстановления?')">Удалить</button></div><form id="delete-block-{{ block.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_block"><input type="hidden" name="delete_block_id" value="{{ block.id }}"></form>{% empty %}<p class="dropzone-empty">В теме пока нет блоков. Выберите тип материала ниже.</p>{% endfor %}</div>
+              <form id="block-sort-{{ lesson.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="reorder_blocks"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"></form>
+              <details class="add-block" {% if not lesson.blocks.all %}open{% endif %}><summary><span>+</span> Добавить учебный блок</summary><p class="add-block-intro">Блок - это единица обучения внутри темы. Выберите подходящий тип.</p><div class="block-forms"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_text"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Текст или лекция</h4><label>Название блока<input name="text_title" required placeholder="Основные понятия"></label><label>Содержание<textarea name="text_body" required rows="4" placeholder="Введите текст для слушателей"></textarea></label><button>Добавить текст</button></form><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Файл или материал</h4><label>Название блока<input name="material_title" required placeholder="Атлас строения сердца"></label><label>Комментарий <small>необязательно</small><textarea name="material_description" rows="2"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Загрузить файл</button></form><a class="quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}"><span>Проверка знаний</span><strong>Создать тест для темы →</strong></a></div></details>
+            </article>
+          {% endfor %}
+        </div>
+        <form id="lesson-sort-{{ section.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="reorder_lessons"><input type="hidden" name="section_id" value="{{ section.id }}"></form>
       </section>
     {% empty %}<section class="empty-state builder-empty"><p class="eyebrow">Программа пуста</p><h2>Начните с первого раздела</h2><p>После создания раздела вы сможете добавить в него тему, а затем наполнить тему учебными блоками.</p></section>{% endfor %}
   </section>
@@ -40,11 +45,37 @@
   <section class="card"><p class="eyebrow">Настройки</p><h2>Карточка и сроки курса</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="save_course"><label>Наименование<input name="title" required value="{{ course.title }}"></label><label>Краткое описание<input name="short_description" value="{{ course.short_description }}"></label><label>Описание<textarea name="description" rows="4">{{ course.description }}</textarea></label><label>Обложка<input type="file" name="cover" accept="image/*"></label><label>Статус<select name="status">{% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>Сохранить изменения</button></form><form method="post" class="schedule-form">{% csrf_token %}<input type="hidden" name="action" value="save_schedule"><h3>Сроки обучения</h3><p>Можно изменить в любой момент.</p><div class="course-date-fields"><label>Начало<input type="date" name="course_start" required value="{{ schedule_run.start_at|date:'Y-m-d' }}"></label><label>Окончание<input type="date" name="course_end" required value="{{ schedule_run.end_at|date:'Y-m-d' }}"></label></div><button class="button-secondary">Сохранить сроки</button></form></section>
 </div>
 <script>
-document.querySelectorAll('[data-dropzone]').forEach((zone) => {
-  let dragged;
-  zone.addEventListener('dragstart', (event) => { dragged = event.target.closest('.content-block'); if (dragged) { dragged.classList.add('is-dragging'); event.dataTransfer.effectAllowed = 'move'; } });
-  zone.addEventListener('dragover', (event) => { event.preventDefault(); const target = event.target.closest('.content-block'); if (dragged && target && target !== dragged) { const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2; zone.insertBefore(dragged, before ? target : target.nextSibling); } });
-  zone.addEventListener('dragend', () => { if (dragged) dragged.classList.remove('is-dragging'); });
-});
+function enableSorting(zoneSelector, itemSelector) {
+  document.querySelectorAll(zoneSelector).forEach((zone) => {
+    let dragged;
+    let dragFromHandle = false;
+    zone.addEventListener('pointerdown', (event) => {
+      dragFromHandle = Boolean(event.target.closest('[data-drag-handle]'));
+    });
+    zone.addEventListener('dragstart', (event) => {
+      if (!dragFromHandle) { event.preventDefault(); return; }
+      dragged = event.target.closest(itemSelector);
+      if (dragged) { dragged.classList.add('is-dragging'); event.dataTransfer.effectAllowed = 'move'; }
+    });
+    zone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      const target = event.target.closest(itemSelector);
+      if (dragged && target && target !== dragged) {
+        const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
+        zone.insertBefore(dragged, before ? target : target.nextSibling);
+      }
+    });
+    zone.addEventListener('dragend', () => {
+      if (!dragged) return;
+      dragged.classList.remove('is-dragging');
+      const form = document.querySelector(`#${zone.dataset.sortForm}`);
+      dragged = undefined;
+      dragFromHandle = false;
+      form?.requestSubmit();
+    });
+  });
+}
+enableSorting('[data-lesson-dropzone]', '.topic-card');
+enableSorting('[data-block-dropzone]', '.content-block');
 </script>
 {% endblock %}

@@ -30,6 +30,7 @@ class Question(UUIDModel, TimeStampedModel):
     author = models.ForeignKey("accounts.User", on_delete=models.PROTECT)
     type = models.CharField(max_length=20, choices=Type)
     text = models.TextField()
+    image = models.ImageField(upload_to="question_images/", blank=True)
     explanation = models.TextField(blank=True)
     difficulty = models.PositiveSmallIntegerField(default=1)
     settings = models.JSONField(default=dict, blank=True)
@@ -39,6 +40,8 @@ class QuestionOption(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="options")
     text = models.CharField(max_length=1000)
     position = models.PositiveIntegerField()
+    marker_x = models.FloatField(null=True, blank=True)
+    marker_y = models.FloatField(null=True, blank=True)
     is_correct = models.BooleanField(default=False)
     feedback = models.TextField(blank=True)
 

@@ -41,12 +41,12 @@ def take_quiz(request, quiz_id):
     if request.method == "POST":
         try:
             for item in questions:
-                value = request.POST.get(f"question_{item.question_id}")
-                if value:
+                values = request.POST.getlist(f"question_{item.question_id}")
+                if values:
                     save_answer(
                         attempt=attempt,
                         question_id=item.question_id,
-                        answer_data={"option_ids": [value]},
+                        answer_data={"option_ids": values},
                     )
             attempt = submit_attempt(attempt=attempt)
             if attempt.passed:

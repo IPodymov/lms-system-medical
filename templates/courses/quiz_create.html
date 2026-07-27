@@ -1,5 +1,39 @@
 {% extends 'base.html' %}
-{% block title %}Новый тест — {{ course.title }}{% endblock %}
+{% block title %}Новый тест | {{ course.title }}{% endblock %}
 {% block content %}
-<div class="form-page"><a class="back-link" href="{% url 'course-edit' course.id %}">← К конструктору курса</a><p class="eyebrow">Закрепление материала</p><h1>Создать тест</h1><p>Тест станет последним блоком выбранной темы. Для следующего вопроса создайте отдельный тест — вопросы можно объединить позже.</p><form method="post" class="form-card">{% csrf_token %}<label>Тема<select name="lesson_id">{% for lesson in lessons %}<option value="{{ lesson.id }}" {% if selected_lesson.id == lesson.id %}selected{% endif %}>{{ lesson.section.title }} — {{ lesson.title }}</option>{% endfor %}</select></label><label>Название теста<input name="quiz_title" required value="{{ request.POST.quiz_title }}" placeholder="Проверка знаний по теме"></label><label>Вопрос<textarea name="question_text" required rows="4">{{ request.POST.question_text }}</textarea></label><fieldset><legend>Варианты ответа</legend>{% for i in '0123' %}<label>Вариант {{ forloop.counter }}<input name="option" required value="{{ request.POST.option }}"></label>{% endfor %}<label>Правильный вариант<select name="correct_option">{% for i in '0123' %}<option value="{{ i }}">{{ forloop.counter }}</option>{% endfor %}</select></label></fieldset><button>Добавить тест в программу</button></form></div>
+<div class="form-page"><a class="back-link" href="{% url 'course-edit' course.id %}">Назад к конструктору курса</a><p class="eyebrow">Закрепление материала</p><h1>Создать тест</h1><p>Тест станет последним блоком выбранной темы.</p><form method="post" enctype="multipart/form-data" class="form-card" id="quiz-form">{% csrf_token %}<label>Тема<select name="lesson_id">{% for lesson in lessons %}<option value="{{ lesson.id }}" {% if selected_lesson.id == lesson.id %}selected{% endif %}>{{ lesson.section.title }} | {{ lesson.title }}</option>{% endfor %}</select></label><label>Название теста<input name="quiz_title" required value="{{ request.POST.quiz_title }}" placeholder="Проверка знаний по теме"></label><label>Вопрос<textarea name="question_text" required rows="4">{{ request.POST.question_text }}</textarea></label><fieldset><legend>Тип вопроса</legend><label class="choice"><input type="radio" name="question_kind" value="text" checked> Варианты текста</label><label class="choice"><input type="radio" name="question_kind" value="image"> Отметки на изображении</label></fieldset><label>Сколько правильных ответов?<select name="answer_mode" id="answer-mode"><option value="single">Один правильный ответ</option><option value="multiple">Несколько правильных ответов</option></select></label><fieldset id="text-options"><legend>Варианты ответа</legend>{% for i in '0123' %}<label>Вариант {{ forloop.counter }}<input name="option" required></label><label class="choice"><input class="correct-option" type="radio" name="correct_option" value="{{ i }}" {% if forloop.first %}checked{% endif %}> Правильный вариант</label>{% endfor %}</fieldset><fieldset id="image-options" hidden><legend>Отметки на изображении</legend><label>Изображение<input type="file" name="question_image" id="question-image" accept="image/*"></label><p class="field-hint">Загрузите изображение и щёлкните по нему, чтобы добавить область ответа. Затем отметьте правильные области.</p><div class="question-image-editor" id="image-editor" hidden><img id="image-preview" alt="Изображение для разметки"><div id="marker-layer"></div></div><div id="marker-controls"></div></fieldset><button>Добавить тест в программу</button></form></div>
+<script>
+const form = document.querySelector('#quiz-form');
+const answerMode = document.querySelector('#answer-mode');
+const textOptions = document.querySelector('#text-options');
+const imageOptions = document.querySelector('#image-options');
+const imageInput = document.querySelector('#question-image');
+const imageEditor = document.querySelector('#image-editor');
+const imagePreview = document.querySelector('#image-preview');
+const markerLayer = document.querySelector('#marker-layer');
+const markerControls = document.querySelector('#marker-controls');
+let markers = [];
+
+function selectionType() { return answerMode.value === 'multiple' ? 'checkbox' : 'radio'; }
+function updateChoiceInputs() {
+  document.querySelectorAll('.correct-option').forEach((input) => { input.type = selectionType(); });
+  renderMarkers();
+}
+function renderMarkers() {
+  markerLayer.replaceChildren(); markerControls.replaceChildren();
+  markers.forEach((marker, index) => {
+    const pin = document.createElement('span'); pin.className = 'image-marker'; pin.style.left = `${marker.x}%`; pin.style.top = `${marker.y}%`; pin.textContent = index + 1; markerLayer.append(pin);
+    const control = document.createElement('label'); control.className = 'choice';
+    const correct = document.createElement('input'); correct.type = selectionType(); correct.name = 'correct_option'; correct.value = index; correct.checked = marker.correct; correct.addEventListener('change', () => { marker.correct = correct.checked; });
+    const x = document.createElement('input'); x.type = 'hidden'; x.name = 'marker_x'; x.value = marker.x;
+    const y = document.createElement('input'); y.type = 'hidden'; y.name = 'marker_y'; y.value = marker.y;
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'button-secondary'; remove.textContent = 'Удалить отметку'; remove.addEventListener('click', () => { markers.splice(index, 1); renderMarkers(); });
+    control.append(correct, ` Область ${index + 1}`, x, y); markerControls.append(control, remove);
+  });
+}
+document.querySelectorAll('input[name="question_kind"]').forEach((input) => input.addEventListener('change', () => { const imageQuestion = form.question_kind.value === 'image'; textOptions.hidden = imageQuestion; imageOptions.hidden = !imageQuestion; document.querySelectorAll('#text-options input[name="option"]').forEach((field) => { field.required = !imageQuestion; }); imageInput.required = imageQuestion; }));
+answerMode.addEventListener('change', updateChoiceInputs);
+imageInput.addEventListener('change', () => { const [file] = imageInput.files; if (!file) return; imagePreview.src = URL.createObjectURL(file); imageEditor.hidden = false; markers = []; renderMarkers(); });
+imagePreview.addEventListener('click', (event) => { const box = imagePreview.getBoundingClientRect(); markers.push({ x: Number(((event.clientX - box.left) / box.width * 100).toFixed(2)), y: Number(((event.clientY - box.top) / box.height * 100).toFixed(2)), correct: false }); renderMarkers(); });
+</script>
 {% endblock %}

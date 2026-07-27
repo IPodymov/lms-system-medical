@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.assessments.models import Quiz
+from apps.assessments.models import Question, Quiz
 from apps.learning.models import Enrollment
 from apps.organizations.models import Organization, OrganizationMembership
 
@@ -267,6 +267,119 @@ class CourseAuthoringViewsTests(TestCase):
             ).exists()
         )
 
+    def test_editor_can_delete_block_and_remaining_blocks_are_repositioned(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+        self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Тема"},
+        )
+        lesson = course.sections.get().lessons.get()
+        first_block = ContentBlock.objects.create(
+            lesson=lesson, type=ContentBlock.Type.TEXT, title="Первый", position=1
+        )
+        remaining_block = ContentBlock.objects.create(
+            lesson=lesson, type=ContentBlock.Type.TEXT, title="Второй", position=2
+        )
+
+        response = self.client.post(
+            reverse("course-edit", args=[course.pk]),
+            {"action": "delete_block", "delete_block_id": first_block.pk},
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        self.assertFalse(ContentBlock.objects.filter(pk=first_block.pk).exists())
+        remaining_block.refresh_from_db()
+        self.assertEqual(remaining_block.position, 1)
+
+    def test_editor_can_edit_and_reorder_lessons(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+        url = reverse("course-edit", args=[course.pk])
+        self.client.post(
+            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Первая"}
+        )
+        self.client.post(
+            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Вторая"}
+        )
+        section = course.sections.get(title="Раздел")
+        first_lesson, second_lesson = section.lessons.order_by("position")
+
+        self.client.post(
+            url,
+            {
+                "action": "edit_lesson",
+                "lesson_id": first_lesson.pk,
+                "lesson_title": "Обновлённая тема",
+                "lesson_description": "Новое описание",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "action": "reorder_lessons",
+                "section_id": section.pk,
+                "lesson_id": [second_lesson.pk, first_lesson.pk],
+            },
+        )
+
+        self.assertRedirects(response, url)
+        first_lesson.refresh_from_db()
+        second_lesson.refresh_from_db()
+        self.assertEqual(first_lesson.title, "Обновлённая тема")
+        self.assertEqual(first_lesson.description, "Новое описание")
+        self.assertEqual(second_lesson.position, 1)
+        self.assertEqual(first_lesson.position, 2)
+
+    def test_editor_can_edit_and_reorder_text_blocks(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+        url = reverse("course-edit", args=[course.pk])
+        self.client.post(
+            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Тема"}
+        )
+        lesson = course.sections.get().lessons.get()
+        first_block = ContentBlock.objects.create(
+            lesson=lesson, type=ContentBlock.Type.TEXT, title="Первый", position=1
+        )
+        second_block = ContentBlock.objects.create(
+            lesson=lesson, type=ContentBlock.Type.TEXT, title="Второй", position=2
+        )
+        TextContent.objects.create(content_block=first_block, body="Старый текст")
+        TextContent.objects.create(content_block=second_block, body="Второй текст")
+
+        self.client.post(
+            url,
+            {
+                "action": "edit_block",
+                "block_id": first_block.pk,
+                "block_title": "Обновлённый блок",
+                "text_body": "Новый текст",
+            },
+        )
+        response = self.client.post(
+            url,
+            {
+                "action": "reorder_blocks",
+                "lesson_id": lesson.pk,
+                "block_id": [second_block.pk, first_block.pk],
+            },
+        )
+
+        self.assertRedirects(response, url)
+        first_block.refresh_from_db()
+        second_block.refresh_from_db()
+        self.assertEqual(first_block.title, "Обновлённый блок")
+        self.assertEqual(first_block.text_content.body, "Новый текст")
+        self.assertEqual(second_block.position, 1)
+        self.assertEqual(first_block.position, 2)
+
     def test_editor_adds_material_and_quiz(self):
         course = Course.objects.create(
             organization=self.organization,
@@ -329,6 +442,11 @@ class CourseAuthoringViewsTests(TestCase):
             organization=self.organization, title="Курс", slug="course", created_by=self.user
         )
         course.authors.create(user=self.user, role="owner")
+        page_response = self.client.get(reverse("quiz-create", args=[course.pk]))
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertContains(page_response, "Создать тест")
+
         response = self.client.post(
             reverse("quiz-create", args=[course.pk]),
             {
@@ -341,3 +459,30 @@ class CourseAuthoringViewsTests(TestCase):
 
         self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
         self.assertTrue(Quiz.objects.filter(title="Тест по теме").exists())
+
+    def test_author_can_create_image_question_with_multiple_answers(self):
+        course = Course.objects.create(
+            organization=self.organization, title="Курс", slug="course", created_by=self.user
+        )
+        course.authors.create(user=self.user, role="owner")
+
+        response = self.client.post(
+            reverse("quiz-create", args=[course.pk]),
+            {
+                "quiz_title": "Изображение",
+                "question_text": "Отметьте структуры",
+                "question_kind": "image",
+                "answer_mode": "multiple",
+                "marker_x": ["12.5", "75"],
+                "marker_y": ["20", "80.5"],
+                "correct_option": ["0", "1"],
+                "question_image": SimpleUploadedFile("diagram.png", b"image", "image/png"),
+            },
+        )
+
+        self.assertRedirects(response, reverse("course-edit", args=[course.pk]))
+        question = Quiz.objects.get(title="Изображение").quiz_questions.get().question
+        self.assertEqual(question.type, Question.Type.MULTIPLE)
+        self.assertTrue(question.image)
+        self.assertEqual(question.options.filter(is_correct=True).count(), 2)
+        self.assertEqual(question.options.get(position=1).marker_x, 12.5)
