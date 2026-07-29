@@ -269,7 +269,10 @@ class CourseAuthoringViewsTests(TestCase):
 
     def test_editor_can_delete_block_and_remaining_blocks_are_repositioned(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
         self.client.post(
@@ -296,15 +299,28 @@ class CourseAuthoringViewsTests(TestCase):
 
     def test_editor_can_edit_and_reorder_lessons(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
         url = reverse("course-edit", args=[course.pk])
         self.client.post(
-            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Первая"}
+            url,
+            {
+                "action": "add_lesson",
+                "section_title": "Раздел",
+                "lesson_title": "Первая",
+            },
         )
         self.client.post(
-            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Вторая"}
+            url,
+            {
+                "action": "add_lesson",
+                "section_title": "Раздел",
+                "lesson_title": "Вторая",
+            },
         )
         section = course.sections.get(title="Раздел")
         first_lesson, second_lesson = section.lessons.order_by("position")
@@ -335,14 +351,63 @@ class CourseAuthoringViewsTests(TestCase):
         self.assertEqual(second_lesson.position, 1)
         self.assertEqual(first_lesson.position, 2)
 
-    def test_editor_can_edit_and_reorder_text_blocks(self):
+    def test_editor_can_delete_lesson_and_remaining_lessons_are_repositioned(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
         url = reverse("course-edit", args=[course.pk])
         self.client.post(
-            url, {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Тема"}
+            url,
+            {
+                "action": "add_lesson",
+                "section_title": "Раздел",
+                "lesson_title": "Первая",
+            },
+        )
+        self.client.post(
+            url,
+            {
+                "action": "add_lesson",
+                "section_title": "Раздел",
+                "lesson_title": "Вторая",
+            },
+        )
+        section = course.sections.get(title="Раздел")
+        first_lesson, second_lesson = section.lessons.order_by("position")
+        ContentBlock.objects.create(
+            lesson=first_lesson,
+            type=ContentBlock.Type.TEXT,
+            title="Удаляемый блок",
+            position=1,
+        )
+
+        response = self.client.post(
+            url,
+            {"action": "delete_lesson", "delete_lesson_id": first_lesson.pk},
+        )
+
+        self.assertRedirects(response, url)
+        self.assertFalse(section.lessons.filter(pk=first_lesson.pk).exists())
+        self.assertFalse(ContentBlock.objects.filter(lesson_id=first_lesson.pk).exists())
+        second_lesson.refresh_from_db()
+        self.assertEqual(second_lesson.position, 1)
+
+    def test_editor_can_edit_and_reorder_text_blocks(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+        url = reverse("course-edit", args=[course.pk])
+        self.client.post(
+            url,
+            {"action": "add_lesson", "section_title": "Раздел", "lesson_title": "Тема"},
         )
         lesson = course.sections.get().lessons.get()
         first_block = ContentBlock.objects.create(
@@ -416,7 +481,10 @@ class CourseAuthoringViewsTests(TestCase):
 
     def test_editor_can_add_external_material_link(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
 
@@ -439,7 +507,10 @@ class CourseAuthoringViewsTests(TestCase):
 
     def test_author_can_create_quiz_on_separate_page(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
         page_response = self.client.get(reverse("quiz-create", args=[course.pk]))
@@ -462,7 +533,10 @@ class CourseAuthoringViewsTests(TestCase):
 
     def test_author_can_create_image_question_with_multiple_answers(self):
         course = Course.objects.create(
-            organization=self.organization, title="Курс", slug="course", created_by=self.user
+            organization=self.organization,
+            title="Курс",
+            slug="course",
+            created_by=self.user,
         )
         course.authors.create(user=self.user, role="owner")
 

@@ -472,6 +472,21 @@ def course_edit(request, course_id):
                 lesson.description = request.POST.get("lesson_description", "").strip()
                 lesson.save(update_fields=["title", "description"])
                 messages.success(request, "Тема обновлена.")
+        elif action == "delete_lesson":
+            lesson = get_object_or_404(
+                Lesson,
+                pk=request.POST.get("delete_lesson_id"),
+                section__course=course,
+            )
+            section = lesson.section
+            lesson.delete()
+            for position, remaining_lesson in enumerate(
+                section.lessons.order_by("position"), start=1
+            ):
+                if remaining_lesson.position != position:
+                    remaining_lesson.position = position
+                    remaining_lesson.save(update_fields=["position"])
+            messages.success(request, "Тема удалена.")
         elif action == "edit_block":
             block = get_object_or_404(
                 ContentBlock,
@@ -490,7 +505,9 @@ def course_edit(request, course_id):
                         block.text_content.save(update_fields=["body"])
                     elif block.type == ContentBlock.Type.FILE:
                         file_content = block.file_content
-                        file_content.description = request.POST.get("material_description", "").strip()
+                        file_content.description = request.POST.get(
+                            "material_description", ""
+                        ).strip()
                         if replacement_file := request.FILES.get("file"):
                             file_content.file = replacement_file
                             file_content.save(update_fields=["description", "file"])
@@ -666,7 +683,7 @@ def quiz_create(request, course_id):
             marker_y_values = request.POST.getlist("marker_y")
             if len(marker_x_values) != len(marker_y_values):
                 marker_x_values = []
-            for x, y in zip(marker_x_values, marker_y_values):
+            for x, y in zip(marker_x_values, marker_y_values, strict=True):
                 try:
                     marker_x, marker_y = float(x), float(y)
                 except ValueError:

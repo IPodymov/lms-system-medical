@@ -8,12 +8,8 @@ from apps.notifications.models import Notification
 
 class CourseRunSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source="course.title", read_only=True)
-    organization_id = serializers.UUIDField(
-        source="course.organization_id", read_only=True
-    )
-    organization_name = serializers.CharField(
-        source="course.organization.name", read_only=True
-    )
+    organization_id = serializers.UUIDField(source="course.organization_id", read_only=True)
+    organization_name = serializers.CharField(source="course.organization.name", read_only=True)
     organization_type = serializers.CharField(
         source="course.organization.institution_type", read_only=True
     )
