@@ -9,4 +9,6 @@
   box-shadow: var(--shadow-card);
 }
 
-.grid .card { margin: 0; }
+.grid .card {
+  margin: 0;
+}
