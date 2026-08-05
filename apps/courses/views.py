@@ -2,13 +2,12 @@ from datetime import date, datetime, time
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.text import slugify
-from django.views.decorators.cache import cache_page
-from django.views.decorators.vary import vary_on_cookie
 
 from apps.assessments.models import Question
 from apps.assessments.permissions import can_edit_course
@@ -28,9 +27,28 @@ from .models import (
     Lesson,
 )
 
+CATALOG_RUNS_CACHE_KEY = "courses:catalog:published_runs"
+CATALOG_RUNS_CACHE_TTL = 60
 
-@cache_page(60)
-@vary_on_cookie
+
+def _published_catalog_runs():
+    """Active runs of published courses, shown to every visitor identically.
+
+    Cached at the queryset level (not via cache_page) because the rest of the
+    catalog page — draft_courses — is specific to the signed-in author and
+    must never be served from another visitor's cached page.
+    """
+    runs = cache.get(CATALOG_RUNS_CACHE_KEY)
+    if runs is None:
+        runs = list(
+            CourseRun.objects.filter(status="active", course__status="published").select_related(
+                "course"
+            )
+        )
+        cache.set(CATALOG_RUNS_CACHE_KEY, runs, CATALOG_RUNS_CACHE_TTL)
+    return runs
+
+
 def catalog(request):
     draft_courses = Course.objects.none()
     if request.user.is_authenticated:
@@ -43,9 +61,7 @@ def catalog(request):
         request,
         "courses/catalog.html",
         {
-            "runs": CourseRun.objects.filter(
-                status="active", course__status="published"
-            ).select_related("course"),
+            "runs": _published_catalog_runs(),
             "draft_courses": draft_courses,
         },
     )

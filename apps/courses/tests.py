@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
@@ -23,6 +24,10 @@ from .models import (
 
 class CourseAuthoringViewsTests(TestCase):
     def setUp(self):
+        # catalog() caches the public runs list under a fixed key (see
+        # apps.courses.views._published_catalog_runs); the cache backend is
+        # process-wide and not reset between tests like the database is.
+        cache.clear()
         self.user = User.objects.create_user("teacher@example.test", "password")
         self.organization = Organization.objects.create(
             name="Тестовый университет", short_name="ТУ", slug="test-university"
