@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.assessments.models import Question, QuestionOption, Quiz, QuizQuestion
+from apps.imaging import resize_uploaded_image
 
 from .models import (
     ContentBlock,
@@ -14,6 +15,12 @@ from .models import (
     Lesson,
     TextContent,
 )
+
+# Diagrams are displayed capped at 720px but often reviewed closely for
+# clinically relevant detail, so this keeps more headroom and quality than the
+# course cover/avatar limits.
+QUESTION_IMAGE_MAX_DIMENSION = 1600
+QUESTION_IMAGE_QUALITY = 90
 
 
 def create_course_run(course, user, *, start_at, end_at, status):
@@ -132,7 +139,9 @@ def create_quiz_block(
         author=author,
         type=question_type,
         text=question_text,
-        image=image,
+        image=resize_uploaded_image(
+            image, max_dimension=QUESTION_IMAGE_MAX_DIMENSION, quality=QUESTION_IMAGE_QUALITY
+        ),
     )
     for position, option in enumerate(options, start=1):
         marker = markers[position - 1] if markers else None

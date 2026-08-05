@@ -11,6 +11,7 @@ from django.utils.text import slugify
 
 from apps.assessments.models import Question
 from apps.assessments.permissions import can_edit_course
+from apps.imaging import resize_uploaded_image
 from apps.learning.models import Enrollment
 from apps.learning.services import EnrollmentError, enroll
 from apps.organizations.models import Organization
@@ -29,6 +30,11 @@ from .models import (
 
 CATALOG_RUNS_CACHE_KEY = "courses:catalog:published_runs"
 CATALOG_RUNS_CACHE_TTL = 60
+
+# Covers are only ever displayed at card size (168px tall); this keeps generous
+# headroom for retina/wide layouts while cutting typical multi-MB phone photos
+# down dramatically.
+COURSE_COVER_MAX_DIMENSION = 1600
 
 
 def _published_catalog_runs():
@@ -203,7 +209,9 @@ def course_create(request):
                 slug=_course_slug(organization, title),
                 short_description=request.POST.get("short_description", "").strip(),
                 description=request.POST.get("description", "").strip(),
-                cover=request.FILES.get("cover"),
+                cover=resize_uploaded_image(
+                    request.FILES.get("cover"), max_dimension=COURSE_COVER_MAX_DIMENSION
+                ),
                 created_by=request.user,
             )
             CourseAuthor.objects.create(course=course, user=request.user, role="owner")
@@ -274,7 +282,9 @@ def _handle_save_course(request, course):
     course.short_description = request.POST.get("short_description", "").strip()
     course.description = request.POST.get("description", "").strip()
     if request.FILES.get("cover"):
-        course.cover = request.FILES["cover"]
+        course.cover = resize_uploaded_image(
+            request.FILES["cover"], max_dimension=COURSE_COVER_MAX_DIMENSION
+        )
     if request.POST.get("status") in dict(Course.Status.choices):
         course.status = request.POST["status"]
         course.published_at = timezone.now() if course.status == Course.Status.PUBLISHED else None

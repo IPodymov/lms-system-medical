@@ -1,8 +1,15 @@
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.password_validation import validate_password
+from django.core.files.uploadedfile import UploadedFile
+
+from apps.imaging import resize_uploaded_image
 
 from .models import User
+
+# Displayed at 58px (see .avatar-image); generous headroom for retina still
+# cuts typical multi-MB phone photos down dramatically.
+AVATAR_MAX_DIMENSION = 512
 
 
 class RegistrationForm(forms.ModelForm):
@@ -73,6 +80,15 @@ class ProfileForm(forms.ModelForm):
         if User.objects.exclude(pk=self.instance.pk).filter(username__iexact=username).exists():
             raise forms.ValidationError("Это имя пользователя уже занято.")
         return username
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get("avatar")
+        # Only a freshly uploaded file needs resizing — an unchanged existing
+        # avatar comes back here as the already-stored FieldFile, and a
+        # cleared avatar comes back as False.
+        if isinstance(avatar, UploadedFile):
+            return resize_uploaded_image(avatar, max_dimension=AVATAR_MAX_DIMENSION)
+        return avatar
 
 
 class UserPasswordForm(PasswordChangeForm):
