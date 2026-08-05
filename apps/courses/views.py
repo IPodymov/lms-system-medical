@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,12 +10,13 @@ from django.utils.text import slugify
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_cookie
 
-from apps.assessments.models import Question, QuestionOption, Quiz, QuizQuestion
+from apps.assessments.models import Question
 from apps.assessments.permissions import can_edit_course
 from apps.learning.models import Enrollment
 from apps.learning.services import EnrollmentError, enroll
 from apps.organizations.models import Organization
 
+from . import services
 from .models import (
     ContentBlock,
     Course,
@@ -23,11 +24,8 @@ from .models import (
     CourseEnrollmentLink,
     CourseMaterialLink,
     CourseRun,
-    CourseRunStaff,
     CourseSection,
-    FileContent,
     Lesson,
-    TextContent,
 )
 
 
@@ -134,24 +132,6 @@ def _course_slug(organization, title):
     return slug
 
 
-def _add_lesson(course, *, section_title, lesson_title, description=""):
-    section = course.sections.filter(title=section_title).first()
-    if not section:
-        section = CourseSection.objects.create(
-            course=course,
-            title=section_title,
-            position=course.sections.count() + 1,
-            is_published=True,
-        )
-    return Lesson.objects.create(
-        section=section,
-        title=lesson_title,
-        description=description,
-        position=section.lessons.count() + 1,
-        is_published=True,
-    )
-
-
 def _parse_course_dates(request):
     start_value = request.POST.get("course_start", "")
     end_value = request.POST.get("course_end", "")
@@ -167,26 +147,6 @@ def _parse_course_dates(request):
     if end_at <= start_at:
         raise ValueError("Дата окончания обучения должна быть позже даты начала.")
     return start_at, end_at
-
-
-def _create_course_run(course, user, *, start_at, end_at, status):
-    run = CourseRun.objects.create(
-        course=course,
-        title=f"{course.title} — основной поток",
-        semester="Открытый",
-        academic_year=f"{start_at.year}/{start_at.year + 1}",
-        start_at=start_at,
-        end_at=end_at,
-        enrollment_start_at=timezone.now(),
-        enrollment_end_at=end_at,
-        status=status,
-    )
-    CourseRunStaff.objects.get_or_create(
-        course_run=run,
-        user=user,
-        defaults={"role": "teacher"},
-    )
-    return run
 
 
 @login_required
@@ -232,7 +192,7 @@ def course_create(request):
             )
             CourseAuthor.objects.create(course=course, user=request.user, role="owner")
             if start_at:
-                _create_course_run(
+                services.create_course_run(
                     course,
                     request.user,
                     start_at=start_at,
@@ -245,27 +205,21 @@ def course_create(request):
             lesson_content = request.POST.get("lesson_content", "").strip()
             material = request.FILES.get("material_file")
             if lesson_title or lesson_content or material:
-                lesson = _add_lesson(
+                lesson = services.add_lesson(
                     course,
                     section_title="Программа курса",
                     lesson_title=lesson_title or "Введение",
                 )
                 if lesson_content:
-                    block = ContentBlock.objects.create(
-                        lesson=lesson,
-                        type=ContentBlock.Type.TEXT,
-                        title=lesson_title or "Введение",
-                        position=1,
+                    services.create_text_block(
+                        lesson, title=lesson_title or "Введение", body=lesson_content
                     )
-                    TextContent.objects.create(content_block=block, body=lesson_content)
                 if material:
-                    block = ContentBlock.objects.create(
-                        lesson=lesson,
-                        type=ContentBlock.Type.FILE,
+                    services.create_file_block(
+                        lesson,
                         title=request.POST.get("material_title", "").strip() or material.name,
-                        position=lesson.blocks.count() + 1,
+                        file=material,
                     )
-                    FileContent.objects.create(content_block=block, file=material)
         messages.success(request, "Курс создан. Соберите программу из тем и блоков.")
         return redirect("course-edit", course.pk)
     return render(request, "courses/create.html")
@@ -299,29 +253,279 @@ def _selected_lesson(course, lesson_id):
     return _course_lesson(course)
 
 
-def _ensure_active_course_run(course, user):
-    """Create one immediately available run when a course is first published."""
-    active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
-    if active_run:
-        return active_run
-    now = timezone.now()
-    run = course.runs.filter(status=CourseRun.Status.PLANNED).order_by("created_at").first()
-    if run:
-        run.status = CourseRun.Status.ACTIVE
-        run.enrollment_start_at = min(run.enrollment_start_at, now)
-        run.enrollment_end_at = max(run.enrollment_end_at, now)
-        run.save(update_fields=["status", "enrollment_start_at", "enrollment_end_at"])
-        CourseRunStaff.objects.get_or_create(
-            course_run=run, user=user, defaults={"role": "teacher"}
-        )
-        return run
-    return _create_course_run(
-        course,
-        user,
-        start_at=now,
-        end_at=now + timedelta(days=365),
-        status=CourseRun.Status.ACTIVE,
+def _handle_save_course(request, course):
+    course.title = request.POST.get("title", "").strip() or course.title
+    course.short_description = request.POST.get("short_description", "").strip()
+    course.description = request.POST.get("description", "").strip()
+    if request.FILES.get("cover"):
+        course.cover = request.FILES["cover"]
+    if request.POST.get("status") in dict(Course.Status.choices):
+        course.status = request.POST["status"]
+        course.published_at = timezone.now() if course.status == Course.Status.PUBLISHED else None
+    with transaction.atomic():
+        course.save()
+        if course.status == Course.Status.PUBLISHED:
+            services.ensure_active_course_run(course, request.user)
+    if course.status == Course.Status.PUBLISHED:
+        messages.success(request, "Курс опубликован и открыт для записи слушателей.")
+    else:
+        messages.success(request, "Данные курса сохранены.")
+
+
+def _handle_open_enrollment(request, course):
+    with transaction.atomic():
+        course.status = Course.Status.PUBLISHED
+        course.published_at = course.published_at or timezone.now()
+        course.save(update_fields=["status", "published_at"])
+        services.ensure_active_course_run(course, request.user)
+    messages.success(request, "Курс открыт для записи всех слушателей.")
+
+
+def _handle_save_schedule(request, course):
+    try:
+        start_at, end_at = _parse_course_dates(request)
+    except ValueError as error:
+        messages.error(request, str(error))
+        return
+    run = (
+        course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+        or course.runs.filter(status=CourseRun.Status.PLANNED).first()
     )
+    if run:
+        run.start_at = start_at
+        run.end_at = end_at
+        run.enrollment_end_at = end_at
+        run.save(update_fields=["start_at", "end_at", "enrollment_end_at"])
+    else:
+        services.create_course_run(
+            course, request.user, start_at=start_at, end_at=end_at, status=CourseRun.Status.PLANNED
+        )
+    messages.success(request, "Сроки обучения сохранены.")
+
+
+def _handle_enroll_editor(request, course):
+    active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
+    if not active_run:
+        messages.error(request, "Сначала откройте курс для записи.")
+        return
+    is_already_enrolled = Enrollment.objects.filter(
+        course_run=active_run, user=request.user
+    ).exists()
+    try:
+        enroll(course_run=active_run, user=request.user)
+    except EnrollmentError as error:
+        messages.error(request, str(error))
+    else:
+        message = (
+            "Вы уже добавлены в этот курс." if is_already_enrolled else "Вы добавлены в этот курс."
+        )
+        messages.success(request, message)
+
+
+def _handle_add_lesson(request, course):
+    section_title = request.POST.get("section_title", "").strip()
+    lesson_title = request.POST.get("lesson_title", "").strip()
+    if not section_title or not lesson_title:
+        messages.error(request, "Укажите раздел и название темы.")
+        return
+    services.add_lesson(
+        course,
+        section_title=section_title,
+        lesson_title=lesson_title,
+        description=request.POST.get("lesson_description", "").strip(),
+    )
+    messages.success(request, "Тема добавлена.")
+
+
+def _handle_add_section(request, course):
+    section_title = request.POST.get("section_title", "").strip()
+    if not section_title:
+        messages.error(request, "Укажите название раздела.")
+        return
+    CourseSection.objects.create(
+        course=course,
+        title=section_title,
+        description=request.POST.get("section_description", "").strip(),
+        position=course.sections.count() + 1,
+        is_published=True,
+    )
+    messages.success(request, "Раздел добавлен.")
+
+
+def _handle_add_material(request, course):
+    file = request.FILES.get("file")
+    title = request.POST.get("material_title", "").strip()
+    if not file or not title:
+        messages.error(request, "Укажите название и выберите файл материала.")
+        return
+    lesson = _selected_lesson(course, request.POST.get("lesson_id"))
+    services.create_file_block(
+        lesson,
+        title=title,
+        file=file,
+        description=request.POST.get("material_description", "").strip(),
+    )
+    messages.success(request, "Материал загружен.")
+
+
+def _handle_add_text(request, course):
+    title = request.POST.get("text_title", "").strip()
+    body = request.POST.get("text_body", "").strip()
+    if not title or not body:
+        messages.error(request, "Укажите название и текст лекции.")
+        return
+    lesson = _selected_lesson(course, request.POST.get("lesson_id"))
+    services.create_text_block(lesson, title=title, body=body)
+    messages.success(request, "Текст лекции добавлен.")
+
+
+def _handle_edit_lesson(request, course):
+    lesson = get_object_or_404(Lesson, pk=request.POST.get("lesson_id"), section__course=course)
+    title = request.POST.get("lesson_title", "").strip()
+    if not title:
+        messages.error(request, "Укажите название темы.")
+        return
+    lesson.title = title
+    lesson.description = request.POST.get("lesson_description", "").strip()
+    lesson.save(update_fields=["title", "description"])
+    messages.success(request, "Тема обновлена.")
+
+
+def _handle_delete_lesson(request, course):
+    lesson = get_object_or_404(
+        Lesson, pk=request.POST.get("delete_lesson_id"), section__course=course
+    )
+    section = lesson.section
+    lesson.delete()
+    services.renumber_positions(section.lessons.order_by("position"))
+    messages.success(request, "Тема удалена.")
+
+
+def _handle_edit_block(request, course):
+    block = get_object_or_404(
+        ContentBlock, pk=request.POST.get("block_id"), lesson__section__course=course
+    )
+    title = request.POST.get("block_title", "").strip()
+    if not title:
+        messages.error(request, "Укажите название блока.")
+        return
+    with transaction.atomic():
+        block.title = title
+        block.save(update_fields=["title"])
+        if block.type == ContentBlock.Type.TEXT:
+            block.text_content.body = request.POST.get("text_body", "").strip()
+            block.text_content.save(update_fields=["body"])
+        elif block.type == ContentBlock.Type.FILE:
+            file_content = block.file_content
+            file_content.description = request.POST.get("material_description", "").strip()
+            if replacement_file := request.FILES.get("file"):
+                file_content.file = replacement_file
+                file_content.save(update_fields=["description", "file"])
+            else:
+                file_content.save(update_fields=["description"])
+        elif block.type == ContentBlock.Type.QUIZ:
+            block.quiz.title = title
+            block.quiz.save(update_fields=["title"])
+    messages.success(request, "Блок обновлён.")
+
+
+def _handle_add_material_link(request, course):
+    title = request.POST.get("link_title", "").strip()
+    url = request.POST.get("link_url", "").strip()
+    if not title or not url:
+        messages.error(request, "Укажите название и ссылку на дополнительный материал.")
+        return
+    CourseMaterialLink.objects.create(
+        course=course,
+        title=title,
+        url=url,
+        description=request.POST.get("link_description", "").strip(),
+        position=course.material_links.count() + 1,
+    )
+    messages.success(request, "Ссылка на дополнительный материал добавлена.")
+
+
+def _handle_add_quiz(request, course):
+    # Совместимость с прежней формой редактора и API-клиентами.
+    quiz_title = request.POST.get("quiz_title", "").strip()
+    text = request.POST.get("question_text", "").strip()
+    options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
+    try:
+        correct = int(request.POST.get("correct_option", ""))
+    except ValueError:
+        correct = -1
+    if not quiz_title or not text or len(options) < 2 or correct not in range(len(options)):
+        messages.error(request, "Заполните тест, минимум два варианта и отметьте правильный ответ.")
+        return
+    lesson = _selected_lesson(course, request.POST.get("lesson_id"))
+    services.create_quiz_block(
+        lesson,
+        title=quiz_title,
+        question_text=text,
+        options=options,
+        correct_indexes={correct},
+        organization=course.organization,
+        author=request.user,
+    )
+    messages.success(request, "Тест добавлен в программу курса.")
+
+
+def _handle_delete_block(request, course):
+    block = get_object_or_404(
+        ContentBlock, pk=request.POST.get("delete_block_id"), lesson__section__course=course
+    )
+    lesson = block.lesson
+    block.delete()
+    services.renumber_positions(lesson.blocks.order_by("position"))
+    messages.success(request, "Блок удалён.")
+
+
+def _handle_reorder_blocks(request, course):
+    lesson = get_object_or_404(Lesson, pk=request.POST.get("lesson_id"), section__course=course)
+    block_ids = request.POST.getlist("block_id")
+    blocks = {
+        str(block.pk): block
+        for block in ContentBlock.objects.filter(pk__in=block_ids, lesson=lesson)
+    }
+    if set(block_ids) != set(blocks) or len(block_ids) != lesson.blocks.count():
+        messages.error(request, "Не удалось сохранить порядок блоков.")
+        return
+    services.reorder(blocks, block_ids)
+    messages.success(request, "Порядок блоков сохранён.")
+
+
+def _handle_reorder_lessons(request, course):
+    section = get_object_or_404(CourseSection, pk=request.POST.get("section_id"), course=course)
+    lesson_ids = request.POST.getlist("lesson_id")
+    lessons = {
+        str(lesson.pk): lesson
+        for lesson in Lesson.objects.filter(pk__in=lesson_ids, section=section)
+    }
+    if set(lesson_ids) != set(lessons) or len(lesson_ids) != section.lessons.count():
+        messages.error(request, "Не удалось сохранить порядок тем.")
+        return
+    services.reorder(lessons, lesson_ids)
+    messages.success(request, "Порядок тем сохранён.")
+
+
+_COURSE_EDIT_ACTIONS = {
+    "save_course": _handle_save_course,
+    "open_enrollment": _handle_open_enrollment,
+    "save_schedule": _handle_save_schedule,
+    "enroll_editor": _handle_enroll_editor,
+    "add_lesson": _handle_add_lesson,
+    "add_section": _handle_add_section,
+    "add_material": _handle_add_material,
+    "add_text": _handle_add_text,
+    "edit_lesson": _handle_edit_lesson,
+    "delete_lesson": _handle_delete_lesson,
+    "edit_block": _handle_edit_block,
+    "add_material_link": _handle_add_material_link,
+    "add_quiz": _handle_add_quiz,
+    "delete_block": _handle_delete_block,
+    "reorder_blocks": _handle_reorder_blocks,
+    "reorder_lessons": _handle_reorder_lessons,
+}
 
 
 @login_required
@@ -330,304 +534,9 @@ def course_edit(request, course_id):
     if not can_edit_course(request.user, course):
         raise PermissionDenied
     if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "save_course":
-            course.title = request.POST.get("title", "").strip() or course.title
-            course.short_description = request.POST.get("short_description", "").strip()
-            course.description = request.POST.get("description", "").strip()
-            if request.FILES.get("cover"):
-                course.cover = request.FILES["cover"]
-            if request.POST.get("status") in dict(Course.Status.choices):
-                course.status = request.POST["status"]
-                course.published_at = (
-                    timezone.now() if course.status == Course.Status.PUBLISHED else None
-                )
-            with transaction.atomic():
-                course.save()
-                if course.status == Course.Status.PUBLISHED:
-                    _ensure_active_course_run(course, request.user)
-            if course.status == Course.Status.PUBLISHED:
-                messages.success(request, "Курс опубликован и открыт для записи слушателей.")
-            else:
-                messages.success(request, "Данные курса сохранены.")
-        elif action == "open_enrollment":
-            with transaction.atomic():
-                course.status = Course.Status.PUBLISHED
-                course.published_at = course.published_at or timezone.now()
-                course.save(update_fields=["status", "published_at"])
-                _ensure_active_course_run(course, request.user)
-            messages.success(request, "Курс открыт для записи всех слушателей.")
-        elif action == "save_schedule":
-            try:
-                start_at, end_at = _parse_course_dates(request)
-            except ValueError as error:
-                messages.error(request, str(error))
-            else:
-                run = (
-                    course.runs.filter(status=CourseRun.Status.ACTIVE).first()
-                    or course.runs.filter(status=CourseRun.Status.PLANNED).first()
-                )
-                if run:
-                    run.start_at = start_at
-                    run.end_at = end_at
-                    run.enrollment_end_at = end_at
-                    run.save(update_fields=["start_at", "end_at", "enrollment_end_at"])
-                else:
-                    _create_course_run(
-                        course,
-                        request.user,
-                        start_at=start_at,
-                        end_at=end_at,
-                        status=CourseRun.Status.PLANNED,
-                    )
-                messages.success(request, "Сроки обучения сохранены.")
-        elif action == "enroll_editor":
-            active_run = course.runs.filter(status=CourseRun.Status.ACTIVE).first()
-            if not active_run:
-                messages.error(request, "Сначала откройте курс для записи.")
-            else:
-                is_already_enrolled = Enrollment.objects.filter(
-                    course_run=active_run, user=request.user
-                ).exists()
-                try:
-                    enroll(course_run=active_run, user=request.user)
-                except EnrollmentError as error:
-                    messages.error(request, str(error))
-                else:
-                    message = (
-                        "Вы уже добавлены в этот курс."
-                        if is_already_enrolled
-                        else "Вы добавлены в этот курс."
-                    )
-                    messages.success(request, message)
-        elif action == "add_lesson":
-            section_title = request.POST.get("section_title", "").strip()
-            lesson_title = request.POST.get("lesson_title", "").strip()
-            if not section_title or not lesson_title:
-                messages.error(request, "Укажите раздел и название темы.")
-            else:
-                _add_lesson(
-                    course,
-                    section_title=section_title,
-                    lesson_title=lesson_title,
-                    description=request.POST.get("lesson_description", "").strip(),
-                )
-                messages.success(request, "Тема добавлена.")
-        elif action == "add_section":
-            section_title = request.POST.get("section_title", "").strip()
-            if not section_title:
-                messages.error(request, "Укажите название раздела.")
-            else:
-                CourseSection.objects.create(
-                    course=course,
-                    title=section_title,
-                    description=request.POST.get("section_description", "").strip(),
-                    position=course.sections.count() + 1,
-                    is_published=True,
-                )
-                messages.success(request, "Раздел добавлен.")
-        elif action == "add_material":
-            file = request.FILES.get("file")
-            title = request.POST.get("material_title", "").strip()
-            if not file or not title:
-                messages.error(request, "Укажите название и выберите файл материала.")
-            else:
-                lesson = _selected_lesson(course, request.POST.get("lesson_id"))
-                block = ContentBlock.objects.create(
-                    lesson=lesson,
-                    type=ContentBlock.Type.FILE,
-                    title=title,
-                    position=lesson.blocks.count() + 1,
-                )
-                FileContent.objects.create(
-                    content_block=block,
-                    file=file,
-                    description=request.POST.get("material_description", "").strip(),
-                )
-                messages.success(request, "Материал загружен.")
-        elif action == "add_text":
-            title = request.POST.get("text_title", "").strip()
-            body = request.POST.get("text_body", "").strip()
-            if not title or not body:
-                messages.error(request, "Укажите название и текст лекции.")
-            else:
-                lesson = _selected_lesson(course, request.POST.get("lesson_id"))
-                block = ContentBlock.objects.create(
-                    lesson=lesson,
-                    type=ContentBlock.Type.TEXT,
-                    title=title,
-                    position=lesson.blocks.count() + 1,
-                )
-                TextContent.objects.create(content_block=block, body=body)
-                messages.success(request, "Текст лекции добавлен.")
-        elif action == "edit_lesson":
-            lesson = get_object_or_404(
-                Lesson, pk=request.POST.get("lesson_id"), section__course=course
-            )
-            title = request.POST.get("lesson_title", "").strip()
-            if not title:
-                messages.error(request, "Укажите название темы.")
-            else:
-                lesson.title = title
-                lesson.description = request.POST.get("lesson_description", "").strip()
-                lesson.save(update_fields=["title", "description"])
-                messages.success(request, "Тема обновлена.")
-        elif action == "delete_lesson":
-            lesson = get_object_or_404(
-                Lesson,
-                pk=request.POST.get("delete_lesson_id"),
-                section__course=course,
-            )
-            section = lesson.section
-            lesson.delete()
-            for position, remaining_lesson in enumerate(
-                section.lessons.order_by("position"), start=1
-            ):
-                if remaining_lesson.position != position:
-                    remaining_lesson.position = position
-                    remaining_lesson.save(update_fields=["position"])
-            messages.success(request, "Тема удалена.")
-        elif action == "edit_block":
-            block = get_object_or_404(
-                ContentBlock,
-                pk=request.POST.get("block_id"),
-                lesson__section__course=course,
-            )
-            title = request.POST.get("block_title", "").strip()
-            if not title:
-                messages.error(request, "Укажите название блока.")
-            else:
-                with transaction.atomic():
-                    block.title = title
-                    block.save(update_fields=["title"])
-                    if block.type == ContentBlock.Type.TEXT:
-                        block.text_content.body = request.POST.get("text_body", "").strip()
-                        block.text_content.save(update_fields=["body"])
-                    elif block.type == ContentBlock.Type.FILE:
-                        file_content = block.file_content
-                        file_content.description = request.POST.get(
-                            "material_description", ""
-                        ).strip()
-                        if replacement_file := request.FILES.get("file"):
-                            file_content.file = replacement_file
-                            file_content.save(update_fields=["description", "file"])
-                        else:
-                            file_content.save(update_fields=["description"])
-                    elif block.type == ContentBlock.Type.QUIZ:
-                        block.quiz.title = title
-                        block.quiz.save(update_fields=["title"])
-                messages.success(request, "Блок обновлён.")
-        elif action == "add_material_link":
-            title = request.POST.get("link_title", "").strip()
-            url = request.POST.get("link_url", "").strip()
-            if not title or not url:
-                messages.error(request, "Укажите название и ссылку на дополнительный материал.")
-            else:
-                CourseMaterialLink.objects.create(
-                    course=course,
-                    title=title,
-                    url=url,
-                    description=request.POST.get("link_description", "").strip(),
-                    position=course.material_links.count() + 1,
-                )
-                messages.success(request, "Ссылка на дополнительный материал добавлена.")
-        elif action == "add_quiz":
-            # Совместимость с прежней формой редактора и API-клиентами.
-            quiz_title = request.POST.get("quiz_title", "").strip()
-            text = request.POST.get("question_text", "").strip()
-            options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
-            try:
-                correct = int(request.POST.get("correct_option", ""))
-            except ValueError:
-                correct = -1
-            if not quiz_title or not text or len(options) < 2 or correct not in range(len(options)):
-                messages.error(
-                    request,
-                    "Заполните тест, минимум два варианта и отметьте правильный ответ.",
-                )
-            else:
-                with transaction.atomic():
-                    lesson = _selected_lesson(course, request.POST.get("lesson_id"))
-                    block = ContentBlock.objects.create(
-                        lesson=lesson,
-                        type=ContentBlock.Type.QUIZ,
-                        title=quiz_title,
-                        position=lesson.blocks.count() + 1,
-                    )
-                    quiz = Quiz.objects.create(
-                        content_block=block, title=quiz_title, passing_score=100
-                    )
-                    question = Question.objects.create(
-                        organization=course.organization,
-                        author=request.user,
-                        type=Question.Type.SINGLE,
-                        text=text,
-                    )
-                    for position, option in enumerate(options, start=1):
-                        QuestionOption.objects.create(
-                            question=question,
-                            text=option,
-                            position=position,
-                            is_correct=position - 1 == correct,
-                        )
-                    QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
-                messages.success(request, "Тест добавлен в программу курса.")
-        elif action == "delete_block":
-            block = get_object_or_404(
-                ContentBlock,
-                pk=request.POST.get("delete_block_id"),
-                lesson__section__course=course,
-            )
-            lesson = block.lesson
-            block.delete()
-            for position, remaining_block in enumerate(lesson.blocks.order_by("position"), start=1):
-                if remaining_block.position != position:
-                    remaining_block.position = position
-                    remaining_block.save(update_fields=["position"])
-            messages.success(request, "Блок удалён.")
-        elif action == "reorder_blocks":
-            lesson = get_object_or_404(
-                Lesson, pk=request.POST.get("lesson_id"), section__course=course
-            )
-            block_ids = request.POST.getlist("block_id")
-            blocks = {
-                str(block.pk): block
-                for block in ContentBlock.objects.filter(pk__in=block_ids, lesson=lesson)
-            }
-            if set(block_ids) != set(blocks) or len(block_ids) != lesson.blocks.count():
-                messages.error(request, "Не удалось сохранить порядок блоков.")
-                return redirect("course-edit", course.pk)
-            # First move positions outside their current range to avoid a transient
-            # unique-constraint clash when two neighbouring blocks are swapped.
-            for block in blocks.values():
-                block.position += len(block_ids) + 1000
-                block.save(update_fields=["position"])
-            for position, block_id in enumerate(block_ids, start=1):
-                block = blocks.get(block_id)
-                if block:
-                    block.position = position
-                    block.save(update_fields=["position"])
-            messages.success(request, "Порядок блоков сохранён.")
-        elif action == "reorder_lessons":
-            section = get_object_or_404(
-                CourseSection, pk=request.POST.get("section_id"), course=course
-            )
-            lesson_ids = request.POST.getlist("lesson_id")
-            lessons = {
-                str(lesson.pk): lesson
-                for lesson in Lesson.objects.filter(pk__in=lesson_ids, section=section)
-            }
-            if set(lesson_ids) != set(lessons) or len(lesson_ids) != section.lessons.count():
-                messages.error(request, "Не удалось сохранить порядок тем.")
-                return redirect("course-edit", course.pk)
-            for lesson in lessons.values():
-                lesson.position += len(lesson_ids) + 1000
-                lesson.save(update_fields=["position"])
-            for position, lesson_id in enumerate(lesson_ids, start=1):
-                lesson = lessons[lesson_id]
-                lesson.position = position
-                lesson.save(update_fields=["position"])
-            messages.success(request, "Порядок тем сохранён.")
+        handler = _COURSE_EDIT_ACTIONS.get(request.POST.get("action"))
+        if handler:
+            handler(request, course)
         return redirect("course-edit", course.pk)
     blocks = (
         ContentBlock.objects.filter(lesson__section__course=course)
@@ -713,31 +622,18 @@ def quiz_create(request, course_id):
                 "Заполните вопрос, добавьте области на изображение и отметьте правильные ответы.",
             )
         else:
-            with transaction.atomic():
-                block = ContentBlock.objects.create(
-                    lesson=lesson,
-                    type=ContentBlock.Type.QUIZ,
-                    title=quiz_title,
-                    position=lesson.blocks.count() + 1,
-                )
-                quiz = Quiz.objects.create(content_block=block, title=quiz_title, passing_score=100)
-                question = Question.objects.create(
-                    organization=course.organization,
-                    author=request.user,
-                    type=question_type,
-                    text=text,
-                    image=request.FILES.get("question_image") if is_image_question else None,
-                )
-                for position, option in enumerate(options, start=1):
-                    QuestionOption.objects.create(
-                        question=question,
-                        text=option,
-                        position=position,
-                        marker_x=markers[position - 1][0] if is_image_question else None,
-                        marker_y=markers[position - 1][1] if is_image_question else None,
-                        is_correct=position - 1 in correct_indexes,
-                    )
-                QuizQuestion.objects.create(quiz=quiz, question=question, position=1)
+            services.create_quiz_block(
+                lesson,
+                title=quiz_title,
+                question_text=text,
+                options=options,
+                correct_indexes=correct_indexes,
+                organization=course.organization,
+                author=request.user,
+                question_type=question_type,
+                image=request.FILES.get("question_image") if is_image_question else None,
+                markers=markers if is_image_question else None,
+            )
             messages.success(request, "Тест добавлен в программу курса.")
             return redirect("course-edit", course.pk)
     return render(
