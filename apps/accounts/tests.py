@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
-from apps.courses.models import Course, CourseRun, CourseRunStaff
+from apps.courses.models import Course, CourseEnrollmentLink, CourseRun, CourseRunStaff
 from apps.learning.models import Enrollment
 from apps.organizations.models import (
     Department,
@@ -247,6 +247,41 @@ class CollegeManagementTests(TestCase):
             ).exists()
         )
         self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())
+
+    def test_admin_dashboard_paginates_enrollment_links(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Терапия",
+            slug="therapy",
+            created_by=self.admin,
+        )
+        now = timezone.now()
+        course_run = CourseRun.objects.create(
+            course=course,
+            title="Основной поток",
+            semester="1",
+            academic_year="2026",
+            start_at=now,
+            end_at=now,
+            enrollment_start_at=now,
+            enrollment_end_at=now,
+            status=CourseRun.Status.ACTIVE,
+        )
+        CourseEnrollmentLink.objects.bulk_create(
+            [
+                CourseEnrollmentLink(
+                    course_run=course_run, created_by=self.admin, label=f"Ссылка {i}"
+                )
+                for i in range(25)
+            ]
+        )
+
+        first_page = self.client.get(reverse("admin-dashboard"))
+        second_page = self.client.get(reverse("admin-dashboard"), {"page": 2})
+
+        self.assertContains(first_page, "Страница 1 из 2")
+        self.assertContains(first_page, 'href="?page=2#links"')
+        self.assertContains(second_page, "Страница 2 из 2")
 
     def test_group_page_enrolls_all_active_members(self):
         faculty = Faculty.objects.create(

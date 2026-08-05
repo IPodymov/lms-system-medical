@@ -8,6 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.views import LoginView
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Avg
 from django.http import HttpResponse
@@ -43,6 +44,7 @@ from .services import organization_slug as _organization_slug
 
 ADMIN_DOCUMENTATION_SALT = "medical-lms.admin-documentation"
 ADMIN_DOCUMENTATION_MAX_AGE = 60 * 60 * 24
+ENROLLMENT_LINKS_PER_PAGE = 20
 
 
 def _admin_documentation_url(request):
@@ -195,11 +197,12 @@ def admin_dashboard(request):
         .select_related("course_run__course", "user")
         .order_by("course_run__course__title", "user__last_name", "user__email")[:100]
     )
-    enrollment_links = (
+    enrollment_links = Paginator(
         CourseEnrollmentLink.objects.filter(course_run__in=course_runs)
         .select_related("course_run__course")
-        .order_by("-created_at")[:20]
-    )
+        .order_by("-created_at"),
+        ENROLLMENT_LINKS_PER_PAGE,
+    ).get_page(request.GET.get("page"))
     teachers = (
         OrganizationMembership.objects.filter(
             organization__in=managed_organizations,
@@ -455,9 +458,12 @@ def study_group_detail(request, group_id):
     for member in members:
         member.organization_membership = memberships_by_user_id.get(member.user_id)
     course_runs = _managed_course_runs(request.user).filter(course__organization=organization)
-    enrollment_links = CourseEnrollmentLink.objects.filter(
-        course_run__in=course_runs
-    ).select_related("course_run__course")
+    enrollment_links = Paginator(
+        CourseEnrollmentLink.objects.filter(course_run__in=course_runs)
+        .select_related("course_run__course")
+        .order_by("-created_at"),
+        ENROLLMENT_LINKS_PER_PAGE,
+    ).get_page(request.GET.get("page"))
     return render(
         request,
         "accounts/study_group_detail.html",
@@ -465,7 +471,7 @@ def study_group_detail(request, group_id):
             "study_group": study_group,
             "members": members,
             "course_runs": course_runs.order_by("course__title", "title"),
-            "enrollment_links": enrollment_links.order_by("-created_at"),
+            "enrollment_links": enrollment_links,
         },
     )
 

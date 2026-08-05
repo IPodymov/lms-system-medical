@@ -53,7 +53,7 @@
     <section id="links" class="management-section">
       <div class="section-heading"><div><p class="eyebrow">Приглашения</p><h2>Ссылки для записи на курс</h2></div></div>
       <article class="card management-panel"><form class="management-link-form" method="post" action="{% url 'create-course-enrollment-link' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'admin-dashboard' %}"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Название для команды<input name="label" placeholder="Осенний набор"></label><label>Действует до<input name="expires_at" type="datetime-local"></label><button>Создать ссылку</button></form></article>
-      {% url 'admin-dashboard' as enrollment_links_next_url %}{% include 'components/enrollment_links.html' with enrollment_links_empty_message="Ссылок для записи ещё нет." %}
+      {% url 'admin-dashboard' as enrollment_links_next_url %}{% include 'components/enrollment_links.html' with enrollment_links_empty_message="Ссылок для записи ещё нет." enrollment_links_page_anchor="#links" %}
     </section>
   </div>
 </section>

@@ -26,3 +26,15 @@ th {
   letter-spacing: .04em;
   text-transform: uppercase;
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pagination-status {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
