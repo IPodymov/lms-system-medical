@@ -143,8 +143,6 @@ def admin_dashboard(request):
             request,
             "accounts/admin_dashboard.html",
             {
-                "memberships": memberships,
-                "progress": [],
                 "metrics": {"users": 0, "students": 0, "average_progress": 0, "completed": 0},
                 "can_manage_users": False,
                 "can_create_organizations": True,
@@ -154,10 +152,7 @@ def admin_dashboard(request):
                 "course_runs": [],
                 "study_groups": [],
                 "students": [],
-                "course_staff": [],
-                "course_enrollments": [],
                 "teachers": [],
-                "can_add_global_teachers": True,
                 "admin_documentation_url": _admin_documentation_url(request),
             },
         )
@@ -173,9 +168,6 @@ def admin_dashboard(request):
             user=request.user, role__in=["teacher", "assistant"]
         ).values("course_run_id")
         enrollments = enrollments.filter(course_run_id__in=run_ids)
-    progress = enrollments.select_related("user", "course_run__course").order_by(
-        "progress_percent", "-updated_at"
-    )[:30]
     course_runs = _managed_course_runs(request.user).order_by("course__title", "title")
     study_groups = _managed_study_groups(request.user).order_by("name", "admission_year")
     students = (
@@ -186,16 +178,6 @@ def admin_dashboard(request):
         )
         .select_related("user", "organization")
         .order_by("user__last_name", "user__first_name", "user__email")
-    )
-    course_staff = (
-        CourseRunStaff.objects.filter(course_run__in=course_runs)
-        .select_related("course_run__course", "user")
-        .order_by("course_run__course__title", "user__last_name", "user__email")
-    )
-    course_enrollments = (
-        Enrollment.objects.filter(course_run__in=course_runs)
-        .select_related("course_run__course", "user")
-        .order_by("course_run__course__title", "user__last_name", "user__email")[:100]
     )
     enrollment_links = Paginator(
         CourseEnrollmentLink.objects.filter(course_run__in=course_runs)
@@ -216,8 +198,6 @@ def admin_dashboard(request):
         request,
         "accounts/admin_dashboard.html",
         {
-            "memberships": memberships.order_by("user__email")[:50],
-            "progress": progress,
             "metrics": {
                 "users": memberships.values("user_id").distinct().count(),
                 "students": enrollments.values("user_id").distinct().count(),
@@ -233,11 +213,8 @@ def admin_dashboard(request):
             "course_runs": course_runs,
             "study_groups": study_groups,
             "students": students,
-            "course_staff": course_staff,
-            "course_enrollments": course_enrollments,
             "enrollment_links": enrollment_links,
             "teachers": teachers,
-            "can_add_global_teachers": request.user.is_superuser,
             "admin_documentation_url": (
                 _admin_documentation_url(request) if request.user.is_superuser else None
             ),
