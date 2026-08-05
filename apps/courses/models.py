@@ -30,6 +30,7 @@ class Course(UUIDModel, TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["organization", "slug"], name="unique_course_slug")
         ]
+        indexes = [models.Index(fields=["status"])]
 
     def __str__(self):
         return self.title
@@ -67,6 +68,9 @@ class CourseRun(UUIDModel, TimeStampedModel):
     status = models.CharField(max_length=12, choices=Status, default=Status.PLANNED)
     max_students = models.PositiveIntegerField(null=True, blank=True)
     settings = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status"])]
 
 
 class CourseRunStaff(models.Model):

@@ -47,6 +47,7 @@ class OrganizationMembership(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["organization", "user"], name="unique_org_member")
         ]
+        indexes = [models.Index(fields=["role", "status"])]
 
 
 class Faculty(TimeStampedModel):
