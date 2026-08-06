@@ -1,0 +1,434 @@
+/* =========================================================================
+   Оболочка приложения: шапка, навигация, основной контейнер
+   -------------------------------------------------------------------------
+   Заменяет components/navigation.css (419 строк). Вся навигация живёт в
+   base.html и больше нигде, поэтому старый файл удалён целиком в том же
+   коммите — правило «удалять мёртвый CSS по ходу, а не потом».
+
+   Только токены. Точки останова — только min-width из разрешённого набора.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Ссылка «к содержимому»
+   Первый элемент в табуляции. Видна только при фокусе с клавиатуры.
+   ------------------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  left: var(--space-8);
+  top: var(--space-8);
+  z-index: calc(var(--z-sticky) + 1);
+  padding: var(--space-8) var(--space-16);
+  color: var(--color-primary-contrast);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  transform: translateY(-200%);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------
+   Шапка
+   ------------------------------------------------------------------------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-16);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--header-height);
+  padding: 0 var(--content-gutter);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Липкая шапка не должна закрывать элемент, получивший фокус, и цель
+   якорной ссылки — WCAG 2.2 SC 2.4.11 Focus Not Obscured. */
+html {
+  scroll-padding-top: calc(var(--header-height) + var(--space-16));
+}
+
+.app-brand {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-8);
+  align-items: center;
+  color: var(--color-text);
+  font-size: var(--text-16);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  text-decoration: none;
+}
+
+.app-brand__mark {
+  display: grid;
+  width: var(--space-32);
+  height: var(--space-32);
+  place-items: center;
+  color: var(--color-primary-contrast);
+  font-size: var(--text-14);
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.app-brand:focus-visible,
+.app-nav a:focus-visible,
+.app-nav summary:focus-visible,
+.app-nav button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------
+   Навигация
+   ------------------------------------------------------------------------- */
+
+.app-nav {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  min-width: 0;
+}
+
+.app-nav__links {
+  display: none; /* на узком экране — внутри мобильного меню */
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.app-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--space-32);
+  padding: 0 var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.app-nav__link:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+/* Текущий раздел помечается и цветом, и подчёркиванием: цвет не может быть
+   единственным носителем смысла. aria-current проставляется в шаблоне. */
+.app-nav__link[aria-current] {
+  color: var(--color-primary);
+  background: var(--color-primary-surface);
+}
+
+/* Иконочные действия: сообщения, уведомления, тема.
+   Размер 32x32 — выше минимума 24x24 из WCAG 2.5.8.
+
+   min-height и padding обнуляются намеренно: прежний слой задаёт
+   button { min-height: 40px; padding: 9px 15px } глобальным селектором по
+   тегу, и без этого сброса иконка получает 2px ширины вместо 20px. Строки
+   уйдут вместе с components/forms.css на этапе уборки. */
+.app-nav__icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  min-height: 0;
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.app-nav__icon:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.app-nav__icon svg {
+  flex: none;
+  width: var(--space-20);
+  height: var(--space-20);
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Счётчик непрочитанного. Сопровождается текстовой подписью в aria-label
+   родительской ссылки, поэтому число не остаётся без объяснения. */
+.app-nav__count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-16);
+  height: var(--space-16);
+  padding: 0 var(--space-4);
+  color: var(--color-primary-contrast);
+  font-size: var(--text-11);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  background: var(--color-danger);
+  border-radius: var(--radius-full);
+}
+
+/* Переключатель темы: показываем иконку той темы, на которую переключимся. */
+.app-nav__icon .icon-sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .app-nav__icon .icon-sun {
+  display: block;
+}
+
+:root[data-theme="dark"] .app-nav__icon .icon-moon {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app-nav__icon .icon-sun {
+    display: block;
+  }
+
+  :root:not([data-theme="light"]) .app-nav__icon .icon-moon {
+    display: none;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Выпадающие меню (нативный <details>)
+   ------------------------------------------------------------------------- */
+
+.app-menu {
+  position: relative;
+  flex: none;
+}
+
+.app-menu > summary {
+  display: inline-flex;
+  gap: var(--space-6);
+  align-items: center;
+  min-height: var(--space-32);
+  padding: 0 var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+
+.app-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-menu > summary:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.app-menu__chevron {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.app-menu[open] .app-menu__chevron {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.app-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-4));
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--space-6);
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+}
+
+.app-menu__panel a,
+.app-menu__panel button {
+  display: flex;
+  align-items: center;
+  min-height: var(--space-32);
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--text-14);
+  font-weight: var(--weight-regular);
+  color: var(--color-text);
+  font-size: var(--text-14);
+  text-align: left;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.app-menu__panel a:hover,
+.app-menu__panel button:hover {
+  background: var(--color-surface-overlay-hover);
+}
+
+.app-menu__label {
+  padding: var(--space-6) var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.app-menu__separator {
+  height: 1px;
+  margin: var(--space-4) var(--space-8);
+  background: var(--color-border);
+}
+
+.app-menu__danger {
+  color: var(--color-danger);
+}
+
+/* Меню профиля */
+.app-menu--profile > summary {
+  gap: var(--space-8);
+  padding-left: var(--space-4);
+}
+
+.app-menu__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  overflow: hidden;
+  color: var(--color-on-primary-surface);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  background: var(--color-primary-surface);
+  border-radius: var(--radius-full);
+}
+
+.app-menu__name {
+  display: none;
+  max-width: 16ch;
+  overflow: hidden;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-menu__email {
+  padding: var(--space-6) var(--space-12) var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+  overflow-wrap: anywhere;
+}
+
+/* Гамбургер: только на узком экране */
+.app-menu--mobile > summary {
+  padding: 0;
+  width: var(--space-32);
+  height: var(--space-32);
+  justify-content: center;
+}
+
+.app-menu--mobile .app-menu__panel {
+  width: min(280px, calc(100vw - var(--space-32)));
+}
+
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: var(--space-16);
+}
+
+.hamburger span {
+  height: 2px;
+  background: currentcolor;
+  border-radius: var(--radius-full);
+}
+
+/* -------------------------------------------------------------------------
+   Основной контейнер
+   ------------------------------------------------------------------------- */
+
+.app-main {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-32) var(--content-gutter) var(--space-80);
+}
+
+/* Плотные страницы (журнал, панель управления) получают широкую раскладку
+   атрибутом data-width="wide" на <main>. */
+.app-main[data-width="wide"] {
+  max-width: var(--content-width-wide);
+}
+
+/* Область сообщений над содержимым страницы */
+.app-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-bottom: var(--space-24);
+}
+
+.app-messages:empty {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------
+   Адаптив: базовые стили выше написаны для 360px
+   ------------------------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  .app-nav__links {
+    display: flex;
+  }
+
+  .app-menu--mobile {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-menu__name {
+    display: inline;
+  }
+}

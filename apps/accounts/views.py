@@ -19,6 +19,7 @@ from openpyxl import Workbook, load_workbook
 
 from apps.courses.models import CourseEnrollmentLink, CourseRunStaff
 from apps.learning.models import Enrollment
+from apps.learning.selectors import with_block_counts
 from apps.organizations.models import (
     Organization,
     OrganizationMembership,
@@ -45,6 +46,9 @@ from .services import organization_slug as _organization_slug
 ADMIN_DOCUMENTATION_SALT = "medical-lms.admin-documentation"
 ADMIN_DOCUMENTATION_MAX_AGE = 60 * 60 * 24
 ENROLLMENT_LINKS_PER_PAGE = 20
+# Дашборд показывает не весь список, а несколько курсов «продолжить с того
+# места, где остановились»; полный список живёт на странице «Мои курсы».
+DASHBOARD_ENROLLMENTS = 6
 
 
 def _admin_documentation_url(request):
@@ -75,14 +79,15 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
+    enrollments = with_block_counts(
+        Enrollment.objects.filter(user=request.user, status="active").select_related(
+            "course_run__course"
+        )
+    )
     return render(
         request,
         "dashboard.html",
-        {
-            "enrollments": Enrollment.objects.filter(
-                user=request.user, status="active"
-            ).select_related("course_run__course")[:6]
-        },
+        {"enrollments": enrollments[:DASHBOARD_ENROLLMENTS]},
     )
 
 

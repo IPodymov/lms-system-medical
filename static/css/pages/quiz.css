@@ -1,0 +1,218 @@
+/* =========================================================================
+   Прохождение теста и результат
+   -------------------------------------------------------------------------
+   Стили ответа на вопрос по изображению переехали сюда из
+   components/question-image.css: там остались только стили редактора
+   вопросов (страница создания теста), которые мигрируют на этапе 4.11.
+   ========================================================================= */
+
+.quiz {
+  max-width: 760px;
+}
+
+.quiz-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* -------------------------------------------------------------------------
+   Вопрос
+   ------------------------------------------------------------------------- */
+
+/* fieldset остаётся блочным: legend внутри flex- или grid-контейнера
+   раскладывается по-разному в разных браузерах. Вся раскладка вынесена
+   во вложенный __body, где таких особенностей нет.
+   margin/padding обнуляются явно — браузер задаёт fieldset собственные,
+   и прежний слой добавлял к ним свои. */
+.quiz-question {
+  margin: 0;
+  padding: var(--density-card-padding);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+/* float — не украшение, а единственный способ вынуть legend из выреза в
+   рамке fieldset: по умолчанию он рендерится поверх верхней границы и
+   наезжает на неё. display: block этого не отменяет.
+   Плавающий блок закрывается clear на __body. */
+.quiz-question__legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-12);
+}
+
+.quiz-question__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  clear: both;
+}
+
+.quiz-question__number {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.quiz-question__text {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.quiz-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+/* -------------------------------------------------------------------------
+   Вопрос по изображению
+   ------------------------------------------------------------------------- */
+
+.quiz-image {
+  position: relative;
+  width: min(100%, 640px);
+}
+
+.quiz-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.quiz-image__markers {
+  position: absolute;
+  inset: 0;
+}
+
+.quiz-marker {
+  position: absolute;
+  left: var(--marker-x, 50%);
+  top: var(--marker-y, 50%);
+  /* Метка центрируется на своей координате, а не начинается с неё. */
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+/* Нативный input скрыт, но остаётся в потоке фокуса: состояние checked и
+   объявление для скринридера обеспечивает именно он, а не подпись. */
+.quiz-marker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.quiz-marker__dot {
+  position: relative; /* якорь для галочки в углу */
+  display: grid;
+  place-items: center;
+  /* 32px — выше минимума 24×24 из WCAG 2.5.8 с запасом на промах пальцем. */
+  width: var(--space-32);
+  height: var(--space-32);
+  color: var(--color-primary-contrast);
+  font-size: var(--text-14);
+  font-weight: var(--weight-bold);
+  background: var(--color-primary);
+  border: 2px solid var(--color-primary-contrast);
+  border-radius: var(--radius-full);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.quiz-marker:hover .quiz-marker__dot {
+  background: var(--color-primary-hover);
+}
+
+.quiz-marker input:focus-visible + .quiz-marker__dot {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Выбранная область отличается не только цветом: она заметно крупнее,
+   получает кольцо и галочку в углу. Цвет как единственный признак
+   не годится (WCAG 1.4.1). */
+.quiz-marker input:checked + .quiz-marker__dot {
+  background: var(--color-success);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.quiz-marker input:checked + .quiz-marker__dot::after {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: var(--space-16);
+  height: var(--space-16);
+  content: "✓";
+  color: var(--color-success);
+  font-size: var(--text-11);
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+}
+
+/* -------------------------------------------------------------------------
+   Результат
+   ------------------------------------------------------------------------- */
+
+.quiz-result {
+  align-items: center;
+  gap: var(--space-12);
+  max-width: 520px;
+  padding: var(--space-40) var(--space-24);
+  text-align: center;
+}
+
+.quiz-result__icon svg {
+  width: var(--space-48);
+  height: var(--space-48);
+}
+
+.quiz-result.is-passed .quiz-result__icon {
+  color: var(--color-success);
+}
+
+.quiz-result.is-failed .quiz-result__icon {
+  color: var(--color-danger);
+}
+
+.quiz-result__title {
+  margin: 0;
+  font-size: var(--text-24);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.quiz-result__score {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-16);
+  font-variant-numeric: tabular-nums;
+}
+
+.quiz-result__actions {
+  justify-content: center;
+  margin-top: var(--space-8);
+}

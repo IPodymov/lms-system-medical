@@ -1,1 +1,5 @@
-{% extends 'base.html' %}{% block content %}<section class="error-page"><h1>Страница не найдена</h1><p>Возможно, ссылка устарела или была введена с ошибкой.</p><a href="/">На главную</a></section>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Страница не найдена — МедЛМС{% endblock %}
+{% block content %}
+{% include 'components/error_page.html' with error_code="404" error_title="Страница не найдена" error_text="Возможно, ссылка устарела или была введена с ошибкой." %}
+{% endblock %}

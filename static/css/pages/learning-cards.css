@@ -1,0 +1,66 @@
+/* =========================================================================
+   Карточки записей на курс: дашборд и «Мои курсы»
+   -------------------------------------------------------------------------
+   Подключается обеими страницами через extra_css. Компонент общий, поэтому
+   и стиль общий: до этого этапа одна и та же карточка была описана в двух
+   шаблонах по-разному.
+   ========================================================================= */
+
+.enrollment-grid {
+  display: grid;
+  gap: var(--space-16);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+
+.enrollment-card {
+  gap: var(--space-16);
+  /* Прогресс прижимается к низу, чтобы у карточек разной высоты полосы
+     оказывались на одной линии и их можно было сравнивать взглядом. */
+  justify-content: space-between;
+}
+
+.enrollment-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.enrollment-card__kicker {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.enrollment-card__title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.enrollment-card__action {
+  color: var(--color-primary);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+}
+
+/* Стрелка появляется при наведении на карточку целиком: подсказывает, что
+   кликабельна вся карточка, а не только эта строка. */
+.enrollment-card__action::after {
+  content: " →";
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.enrollment-card:hover .enrollment-card__action::after,
+.enrollment-card:focus-visible .enrollment-card__action::after {
+  opacity: 1;
+}
+
+/* Бейдж статуса не должен растягиваться на всю ширину карточки. */
+.enrollment-card > .ui-badge {
+  align-self: flex-start;
+}

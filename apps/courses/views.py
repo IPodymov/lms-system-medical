@@ -13,6 +13,7 @@ from apps.assessments.models import Question
 from apps.assessments.permissions import can_edit_course
 from apps.imaging import resize_uploaded_image
 from apps.learning.models import Enrollment
+from apps.learning.selectors import with_block_counts
 from apps.learning.services import EnrollmentError, enroll
 from apps.organizations.models import Organization
 
@@ -57,11 +58,18 @@ def _published_catalog_runs():
 
 def catalog(request):
     draft_courses = Course.objects.none()
+    enrolled_run_ids = set()
     if request.user.is_authenticated:
         draft_courses = (
             Course.objects.filter(status=Course.Status.DRAFT, authors__user=request.user)
             .distinct()
             .order_by("-created_at")
+        )
+        # Одним запросом, чтобы карточка уже записанного потока не предлагала
+        # записаться повторно. Список потоков берётся из общего кэша и не
+        # может знать о конкретном посетителе.
+        enrolled_run_ids = set(
+            Enrollment.objects.filter(user=request.user).values_list("course_run_id", flat=True)
         )
     return render(
         request,
@@ -69,6 +77,7 @@ def catalog(request):
         {
             "runs": _published_catalog_runs(),
             "draft_courses": draft_courses,
+            "enrolled_run_ids": enrolled_run_ids,
         },
     )
 
@@ -78,7 +87,11 @@ def my_courses(request):
     return render(
         request,
         "courses/my_courses.html",
-        {"enrollments": request.user.enrollments.select_related("course_run__course")},
+        {
+            "enrollments": with_block_counts(
+                request.user.enrollments.select_related("course_run__course")
+            )
+        },
     )
 
 
@@ -88,12 +101,23 @@ def course_detail(request, course_id):
         request.user.is_authenticated and can_edit_course(request.user, course)
     ):
         raise PermissionDenied
+    # Записанному слушателю страница курса нужна как вход в обучение, а не как
+    # витрина: показывать ему кнопку записи и рекламное описание — тупик.
+    enrollment = None
+    if request.user.is_authenticated:
+        enrollment = (
+            Enrollment.objects.filter(course_run__course=course, user=request.user)
+            .select_related("course_run")
+            .first()
+        )
     return render(
         request,
         "courses/detail.html",
         {
             "course": course,
             "can_edit": request.user.is_authenticated and can_edit_course(request.user, course),
+            "enrollment": enrollment,
+            "open_run": course.runs.filter(status=CourseRun.Status.ACTIVE).first(),
         },
     )
 

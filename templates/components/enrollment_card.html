@@ -1,0 +1,51 @@
+{% comment %}
+  Карточка записи на курс.
+
+  Параметры:
+    enrollment     — Enrollment, аннотированный learning.selectors.with_block_counts
+                     (обязательно: без blocks_total/blocks_done счётчик не покажется)
+    heading_level  — 2 или 3, по умолчанию 3
+
+  Уровень заголовка задаётся снаружи, потому что карточка встречается и под
+  <h1> (страница «Мои курсы»), и под <h2> (раздел дашборда). Раньше это были
+  два разных шаблона, и один и тот же компонент нёс то h2, то h3 — на странице
+  каталога это давало два десятка заголовков одного уровня подряд.
+{% endcomment %}
+<a class="ui-card ui-card--interactive enrollment-card" href="{% url 'course-learning' enrollment.id %}">
+  <div class="enrollment-card__head">
+    <p class="enrollment-card__kicker">{{ enrollment.course_run.course.title }}</p>
+    {% if heading_level == 2 %}
+      <h2 class="enrollment-card__title">{{ enrollment.course_run.title }}</h2>
+    {% else %}
+      <h3 class="enrollment-card__title">{{ enrollment.course_run.title }}</h3>
+    {% endif %}
+  </div>
+
+  {% if enrollment.status == 'completed' %}
+    <span class="ui-badge ui-badge--success">Курс завершён</span>
+  {% elif enrollment.status != 'active' %}
+    <span class="ui-badge ui-badge--neutral">{{ enrollment.get_status_display }}</span>
+  {% endif %}
+
+  <div class="ui-progress">
+    <div class="ui-progress__head">
+      {% if enrollment.blocks_total %}
+        <span>Пройдено {{ enrollment.blocks_done }} из {{ enrollment.blocks_total }}</span>
+      {% else %}
+        <span>Материалы готовятся</span>
+      {% endif %}
+      <span class="ui-progress__value">{{ enrollment.progress_percent|floatformat:0 }}%</span>
+    </div>
+    {% comment %}
+      Ширина передаётся кастомным свойством, а не inline-стилем ширины:
+      шаблон сообщает данное, решение о внешнем виде остаётся в CSS.
+    {% endcomment %}
+    <div class="ui-progress__track">
+      <div class="ui-progress__bar" style="--progress: {{ enrollment.progress_percent|floatformat:0 }}%"></div>
+    </div>
+  </div>
+
+  <span class="enrollment-card__action">
+    {% if enrollment.progress_percent %}Продолжить обучение{% else %}Начать обучение{% endif %}
+  </span>
+</a>

@@ -1,0 +1,74 @@
+{% comment %}
+  Карточка курса в каталоге.
+
+  Параметры:
+    course        — Course (обязательно)
+    run           — CourseRun, если курс опубликован; без него карточка
+                    считается черновиком автора
+    is_enrolled   — True, если слушатель уже записан на этот поток
+    heading_level — 2 или 3, по умолчанию 3
+
+  Один компонент на оба случая: до этого черновики рендерились отдельной
+  секцией с собственными классами (.draft-courses, .draft-course-card),
+  дублировавшими стиль обычной карточки.
+{% endcomment %}
+<article class="ui-card ui-course-card">
+  {% if course.cover %}
+    <img class="ui-course-card__cover" src="{{ course.cover.url }}" alt="Обложка курса «{{ course.title }}»" loading="lazy">
+  {% else %}
+    <div class="ui-course-card__cover ui-course-card__cover--placeholder" aria-hidden="true">
+      {% if run %}МедЛМС{% else %}Черновик{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="ui-course-card__body">
+    {% if run %}
+      <p class="ui-course-card__meta">{{ run.semester }} семестр · {{ run.academic_year }}</p>
+    {% else %}
+      <p class="ui-course-card__meta">Черновик · не виден студентам</p>
+    {% endif %}
+
+    {% if heading_level == 2 %}
+      <h2 class="ui-course-card__title">{{ course.title }}</h2>
+    {% else %}
+      <h3 class="ui-course-card__title">{{ course.title }}</h3>
+    {% endif %}
+
+    <p class="ui-course-card__description">
+      {{ course.short_description|default:course.description|truncatechars:150 }}
+    </p>
+
+    {% if run %}
+      <p class="ui-course-card__run">Поток: {{ run.title }}</p>
+    {% else %}
+      <p class="ui-course-card__run">Продолжите наполнение</p>
+    {% endif %}
+
+    <div class="ui-card__footer">
+      {% if run %}
+        {% if is_enrolled %}
+          <span class="ui-badge ui-badge--success">Вы записаны</span>
+        {% else %}
+          <span class="ui-badge ui-badge--info">Запись открыта</span>
+        {% endif %}
+      {% else %}
+        <span class="ui-badge ui-badge--neutral">Черновик</span>
+      {% endif %}
+
+      {% if run %}
+        {% if is_enrolled %}
+          <a class="ui-btn ui-btn--secondary ui-btn--sm" href="{% url 'course-detail' course.id %}">Открыть курс</a>
+        {% elif user.is_authenticated %}
+          <form method="post" action="{% url 'enroll' run.id %}">
+            {% csrf_token %}
+            <button class="ui-btn ui-btn--primary ui-btn--sm" type="submit" data-submit-once>Начать обучение</button>
+          </form>
+        {% else %}
+          <a class="ui-btn ui-btn--primary ui-btn--sm" href="{% url 'login' %}?next={% url 'course-detail' course.id %}">Войти, чтобы записаться</a>
+        {% endif %}
+      {% else %}
+        <a class="ui-btn ui-btn--secondary ui-btn--sm" href="{% url 'course-edit' course.id %}">Редактировать</a>
+      {% endif %}
+    </div>
+  </div>
+</article>

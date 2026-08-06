@@ -1,0 +1,75 @@
+{% comment %}
+  Программа курса. Рендерится тегом {% course_outline blocks progresses current_block %}
+  из apps.learning.templatetags.learning_tags — он же строит дерево и считает
+  прогресс раздела.
+
+  Разметка — нативный <details>: на широком экране это боковая панель, на
+  узком — сворачиваемый блок над содержимым. Прежняя вёрстка на узком экране
+  уезжала под урок, то есть навигация по курсу на телефоне терялась.
+
+  Атрибут open стоит в разметке, а JS закрывает панель на узком экране. Так
+  без JS программа остаётся видимой везде, а не спрятанной.
+{% endcomment %}
+<details class="outline" id="course-outline" open>
+  <summary class="outline__summary">
+    <span class="outline__summary-text">Программа курса</span>
+    <span class="outline__chevron" aria-hidden="true"></span>
+  </summary>
+
+  <nav class="outline__body" aria-label="Программа курса">
+    {% for section in sections %}
+      <section class="outline-section">
+        <div class="outline-section__head">
+          <h3 class="outline-section__title">{{ section.title }}</h3>
+          <span class="outline-section__count">{{ section.done }}/{{ section.total }}</span>
+        </div>
+
+        {% comment %}
+          Сегменты дают ответ на «сколько осталось в этом разделе», которого
+          не даёт ни галочка на блоке, ни общий процент по курсу.
+          role="img" с текстовой сводкой обязателен: иначе для скринридера
+          это несколько пустых элементов.
+        {% endcomment %}
+        <div class="ui-progress-segments" role="img"
+             aria-label="Раздел «{{ section.title }}»: пройдено {{ section.done }} из {{ section.total }}">
+          {% for lesson in section.lessons %}{% for block in lesson.blocks %}
+            <span class="ui-progress-segments__item{% if block.state == 'completed' %} is-done{% elif block.state == 'current' %} is-current{% endif %}"></span>
+          {% endfor %}{% endfor %}
+        </div>
+
+        {% for lesson in section.lessons %}
+          <div class="outline-lesson">
+            <p class="outline-lesson__title">{{ lesson.title }}</p>
+            <ul class="outline-lesson__blocks">
+              {% for block in lesson.blocks %}
+                <li>
+                  {% if block.state == 'locked' %}
+                    <span class="outline-block is-locked">
+                      {% include 'components/block_icon.html' with icon='lock' %}
+                      <span class="outline-block__title">{{ block.title }}</span>
+                      <span class="ui-visually-hidden">— недоступно, сначала завершите предыдущие блоки</span>
+                    </span>
+                  {% else %}
+                    <a class="outline-block is-{{ block.state }}" href="?block={{ block.id }}"
+                       {% if block.state == 'current' %}aria-current="true"{% endif %}>
+                      {% include 'components/block_icon.html' with icon=block.icon %}
+                      <span class="outline-block__title">{{ block.title }}</span>
+                      <span class="ui-visually-hidden">
+                        — {{ block.type_label }}{% if block.state == 'completed' %}, выполнено{% elif block.state == 'current' %}, текущий{% endif %}
+                      </span>
+                      {% if block.state == 'completed' %}
+                        <svg class="outline-block__check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.4 3 3 6-6.8"/></svg>
+                      {% endif %}
+                    </a>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </section>
+    {% empty %}
+      <p class="outline__empty">Программа пока пуста.</p>
+    {% endfor %}
+  </nav>
+</details>

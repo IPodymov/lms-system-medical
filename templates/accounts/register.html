@@ -1,5 +1,32 @@
 {% extends 'base.html' %}
+{% load static form_tags %}
+
 {% block title %}Регистрация — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/auth.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="auth"><p class="eyebrow">Новый аккаунт</p><h1>Начните обучение</h1><p>Создайте аккаунт, чтобы записываться на курсы и отслеживать прогресс.</p><form method="post" class="form-card">{% csrf_token %}{{ form.as_p }}<button>Создать аккаунт</button><p class="auth-footer">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p></form></section>
+<section class="auth">
+  {% form_errors form "Проверьте данные" %}
+
+  <div class="auth__header">
+    <p class="auth__eyebrow">Новый аккаунт</p>
+    <h1 class="auth__title">Начните обучение</h1>
+    <p class="auth__subtitle">Создайте аккаунт, чтобы записываться на курсы и отслеживать прогресс.</p>
+  </div>
+
+  <form class="auth__form" method="post" novalidate>
+    {% csrf_token %}
+    {% form_field form.first_name autofocus=True autocomplete="given-name" %}
+    {% form_field form.last_name autocomplete="family-name" %}
+    {% form_field form.email autocomplete="email" %}
+    {% form_field form.password1 autocomplete="new-password" %}
+    {% form_field form.password2 autocomplete="new-password" %}
+    <button class="ui-btn ui-btn--primary ui-btn--block" type="submit" data-submit-once>Создать аккаунт</button>
+  </form>
+
+  <p class="auth__footer">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+</section>
 {% endblock %}

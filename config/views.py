@@ -1,4 +1,15 @@
+from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import render
+
+
+@user_passes_test(lambda user: user.is_staff)
+def styleguide(request):
+    """Живой каталог компонентов дизайн-системы. Только для сотрудников.
+
+    Страница намеренно не принимает никаких параметров и ничего не читает из
+    базы: это витрина разметки и состояний, а не отчёт по данным.
+    """
+    return render(request, "styleguide.html")
 
 
 def bad_request(request, exception=None):

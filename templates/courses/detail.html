@@ -1,8 +1,69 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/course-detail.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
 <article class="course-detail">
-  {% if course.cover %}<img class="course-cover" src="{{ course.cover.url }}" alt="Обложка курса {{ course.title }}">{% endif %}
-  <div class="course-detail-content"><p class="eyebrow">Курс</p><h1>{{ course.title }}</h1><p class="lead">{{ course.short_description }}</p><div class="course-description">{{ course.description|linebreaks }}</div>
-  {% if can_edit %}<p><a class="button-link" href="{% url 'course-edit' course.id %}">Редактировать курс</a></p>{% endif %}</div>
+
+  {% if course.cover %}
+    <img class="course-detail__cover" src="{{ course.cover.url }}" alt="Обложка курса «{{ course.title }}»">
+  {% endif %}
+
+  <div class="course-detail__body">
+    <header class="page-head">
+      <p class="page-head__eyebrow">Курс</p>
+      <h1 class="page-head__title">{{ course.title }}</h1>
+      {% if course.short_description %}
+        <p class="page-head__subtitle">{{ course.short_description }}</p>
+      {% endif %}
+    </header>
+
+    {% comment %}
+      Порядок веток важен: записанному слушателю первым делом нужен вход в
+      обучение. Раньше страница показывала всем одно и то же, и записанный
+      студент упирался в описание курса без единого действия.
+    {% endcomment %}
+    <div class="ui-cluster course-detail__actions">
+      {% if enrollment %}
+        <a class="ui-btn ui-btn--primary" href="{% url 'course-learning' enrollment.id %}">
+          {% if enrollment.progress_percent %}Продолжить обучение{% else %}Начать обучение{% endif %}
+        </a>
+        <span class="ui-badge ui-badge--success">Вы записаны</span>
+      {% elif open_run and user.is_authenticated %}
+        <form method="post" action="{% url 'enroll' open_run.id %}">
+          {% csrf_token %}
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Записаться на курс</button>
+        </form>
+      {% elif open_run %}
+        <a class="ui-btn ui-btn--primary" href="{% url 'login' %}?next={{ request.path }}">Войти, чтобы записаться</a>
+      {% endif %}
+
+      {% if can_edit %}
+        <a class="ui-btn ui-btn--secondary" href="{% url 'course-edit' course.id %}">Редактировать курс</a>
+      {% endif %}
+    </div>
+
+    {% if enrollment %}
+      <div class="ui-progress course-detail__progress">
+        <div class="ui-progress__head">
+          <span>Ваш прогресс</span>
+          <span class="ui-progress__value">{{ enrollment.progress_percent|floatformat:0 }}%</span>
+        </div>
+        <div class="ui-progress__track">
+          <div class="ui-progress__bar" style="--progress: {{ enrollment.progress_percent|floatformat:0 }}%"></div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if course.description %}
+      <div class="ui-prose course-detail__description">{{ course.description|linebreaks }}</div>
+    {% endif %}
+  </div>
+
 </article>
 {% endblock %}

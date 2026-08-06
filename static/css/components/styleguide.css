@@ -1,0 +1,301 @@
+/* =========================================================================
+   Стили страницы /styleguide/
+   -------------------------------------------------------------------------
+   Подключается только на самой странице каталога через блок extra_css, а не
+   в base.html — на остальных страницах эти правила не нужны и не должны
+   висеть в общем бандле.
+   ========================================================================= */
+
+.sg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-48);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-bottom: var(--space-80);
+}
+
+.sg-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg-header h1 {
+  margin: 0;
+  font-size: var(--text-30);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.sg-header p {
+  max-width: var(--measure);
+  margin: var(--space-8) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.sg-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.sg-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  scroll-margin-top: var(--space-24);
+}
+
+.sg-section > h2 {
+  margin: 0;
+  padding-bottom: var(--space-8);
+  font-size: var(--text-24);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg-section > p {
+  max-width: var(--measure);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+/* Демонстрационная площадка: подписанный прямоугольник с образцами. */
+.sg-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.sg-demo__label {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+}
+
+.sg-demo__stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-20);
+  background: var(--color-background);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.sg-demo__stage--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* См. комментарий про min-width в ui.css — то же самое для площадки. */
+.sg-demo__stage > *,
+.sg-demo__stage--stack > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sg-demo__stage--grid {
+  display: grid;
+  gap: var(--space-16);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  align-items: start;
+}
+
+/* Палитра */
+.sg-swatches {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+
+.sg-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.sg-swatch__chip {
+  height: var(--space-40);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.sg-swatch__name {
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  overflow-wrap: anywhere;
+}
+
+.sg-swatch__ratio {
+  color: var(--color-text-muted);
+  font-size: var(--text-11);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Результат замера контраста, проставляется из styleguide.js */
+.sg-pass {
+  color: var(--color-success);
+  font-weight: var(--weight-semibold);
+}
+
+.sg-fail {
+  color: var(--color-danger);
+  font-weight: var(--weight-bold);
+}
+
+/* Пара «поверхность + текст на ней» — проверяется глазом, а не только
+   расчётом контраста. */
+.sg-pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.sg-pair strong {
+  font-size: var(--text-14);
+}
+
+.sg-pair span {
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+  opacity: 0.85;
+}
+
+/* Шкалы отступов и типографики */
+.sg-scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sg-scale__row {
+  display: flex;
+  gap: var(--space-16);
+  align-items: center;
+}
+
+.sg-scale__name {
+  flex: none;
+  width: 11ch;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+}
+
+.sg-scale__bar {
+  height: var(--space-16);
+  background: var(--color-primary);
+  border-radius: var(--radius-xs);
+}
+
+/* Ширина образца равна демонстрируемому токену — так шкала показывает сама
+   себя, а не подписанные прямоугольники произвольного размера. */
+.sg-scale__bar[data-w="4"] { width: var(--space-4); }
+.sg-scale__bar[data-w="8"] { width: var(--space-8); }
+.sg-scale__bar[data-w="12"] { width: var(--space-12); }
+.sg-scale__bar[data-w="16"] { width: var(--space-16); }
+.sg-scale__bar[data-w="24"] { width: var(--space-24); }
+.sg-scale__bar[data-w="32"] { width: var(--space-32); }
+.sg-scale__bar[data-w="48"] { width: var(--space-48); }
+.sg-scale__bar[data-w="64"] { width: var(--space-64); }
+
+/* Образец кегля показывается своим же размером */
+.sg-type__sample[data-size="38"] { font-size: var(--text-38); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); }
+.sg-type__sample[data-size="30"] { font-size: var(--text-30); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); }
+.sg-type__sample[data-size="24"] { font-size: var(--text-24); font-weight: var(--weight-semibold); }
+.sg-type__sample[data-size="20"] { font-size: var(--text-20); font-weight: var(--weight-semibold); }
+.sg-type__sample[data-size="16"] { font-size: var(--text-16); }
+.sg-type__sample[data-size="14"] { font-size: var(--text-14); }
+.sg-type__sample[data-size="12"] { font-size: var(--text-12); color: var(--color-text-muted); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+
+.sg-type__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  align-items: baseline;
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg-type__sample {
+  flex: 1;
+  min-width: 0;
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+/* Таблица состояний компонента.
+   Обёртка обязательна: на узком экране таблица шире вьюпорта, и без
+   собственной прокрутки она растягивает всю страницу по горизонтали. */
+.sg-states-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sg-states {
+  width: 100%;
+  min-width: 460px;
+  font-size: var(--text-13);
+  border-collapse: collapse;
+}
+
+.sg-states th,
+.sg-states td {
+  padding: var(--space-8) var(--space-12);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg-states th {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.sg-states code {
+  font-family: var(--font-mono);
+  font-size: var(--text-12);
+  overflow-wrap: anywhere;
+}
+
+.sg-note {
+  padding: var(--space-12) var(--space-16);
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+  line-height: var(--leading-normal);
+}
+
+.sg-note strong {
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .sg-section {
+    scroll-margin-top: var(--space-32);
+  }
+}

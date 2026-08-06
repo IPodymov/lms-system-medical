@@ -1,0 +1,286 @@
+/* =========================================================================
+   Страница обучения: программа курса и учебный блок
+   ========================================================================= */
+
+.learning-progress {
+  gap: var(--space-8);
+  max-width: 720px;
+}
+
+/* Базовая раскладка — одна колонка (360px). Панель программы идёт первой,
+   поэтому на телефоне она остаётся доступной, а не уезжает под материал. */
+.learning-layout {
+  display: grid;
+  gap: var(--space-16);
+  align-items: start;
+}
+
+/* -------------------------------------------------------------------------
+   Программа курса
+   ------------------------------------------------------------------------- */
+
+.outline {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.outline__summary {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--control-height);
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  list-style: none;
+  border-radius: inherit;
+}
+
+.outline__summary::-webkit-details-marker {
+  display: none;
+}
+
+.outline__summary:hover {
+  background: var(--color-surface-raised);
+}
+
+.outline__summary:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.outline__chevron {
+  flex: none;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.outline[open] .outline__chevron {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.outline__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  padding: 0 var(--space-16) var(--space-16);
+}
+
+.outline__empty {
+  margin: 0;
+  padding: 0 var(--space-16) var(--space-16);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+}
+
+.outline-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.outline-section__head {
+  display: flex;
+  gap: var(--space-8);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.outline-section__title {
+  margin: 0;
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.outline-section__count {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.outline-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.outline-lesson__title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.outline-lesson__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.outline-block {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  /* Минимум 32px по высоте: цель нажатия выше требования WCAG 2.5.8. */
+  min-height: var(--space-32);
+  padding: var(--space-6) var(--space-8);
+  color: var(--color-text);
+  font-size: var(--text-14);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+a.outline-block:hover {
+  background: var(--color-surface-raised);
+}
+
+a.outline-block:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.outline-block__icon {
+  flex: none;
+  width: var(--space-16);
+  height: var(--space-16);
+  color: var(--color-text-muted);
+}
+
+.outline-block__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.outline-block__check {
+  flex: none;
+  width: var(--space-16);
+  height: var(--space-16);
+  color: var(--color-success);
+}
+
+/* Текущий блок помечен фоном, цветом и жирностью — не одним лишь цветом. */
+.outline-block.is-current {
+  color: var(--color-on-primary-surface);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary-surface);
+}
+
+.outline-block.is-current .outline-block__icon {
+  color: var(--color-primary);
+}
+
+.outline-block.is-completed .outline-block__title {
+  color: var(--color-text-muted);
+}
+
+/* Недоступный блок: приглушён, курсор запрета, рядом иконка замка.
+   Прежняя вёрстка ставила сюда эмодзи 🔒 без текстовой подписи — скринридер
+   читал «замок» либо молчал. */
+.outline-block.is-locked {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+/* -------------------------------------------------------------------------
+   Учебный блок
+   ------------------------------------------------------------------------- */
+
+.lesson {
+  gap: var(--space-16);
+}
+
+/* Карточка — flex-колонка, поэтому потомки по умолчанию растягиваются на всю
+   ширину. Кнопке и форме это не нужно: кнопка во всю ширину читается как
+   основное действие страницы, а не как действие внутри блока. */
+.lesson > .ui-btn,
+.lesson > form {
+  align-self: flex-start;
+}
+
+.lesson__breadcrumb {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.lesson__title {
+  margin: 0;
+  font-size: var(--text-24);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.lesson__text p {
+  margin: 0 0 var(--space-12);
+}
+
+.lesson__text p:last-child {
+  margin-bottom: 0;
+}
+
+.lesson__done {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+  margin: 0;
+  color: var(--color-success);
+  font-weight: var(--weight-semibold);
+}
+
+.lesson__done svg {
+  width: var(--space-16);
+  height: var(--space-16);
+}
+
+.lesson__nav {
+  display: flex;
+  gap: var(--space-8);
+  justify-content: space-between;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Кнопки-ссылки не растягиваются, когда соседа нет. */
+.lesson__nav > * {
+  flex: none;
+}
+
+/* -------------------------------------------------------------------------
+   Широкий экран: программа становится боковой панелью
+   ------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .learning-layout {
+    gap: var(--space-24);
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+
+  .outline {
+    position: sticky;
+    /* Учитывает липкую шапку, иначе панель уезжает под неё. */
+    top: calc(var(--header-height) + var(--space-16));
+    max-height: calc(100vh - var(--header-height) - var(--space-32));
+    overflow-y: auto;
+  }
+
+  /* Свёрнутая панель не должна оставлять пустую колонку. */
+  .learning-layout:has(.outline:not([open])) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}

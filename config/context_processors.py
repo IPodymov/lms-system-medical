@@ -39,7 +39,22 @@ def navigation_context(request: HttpRequest) -> dict[str, int]:
 
 
 def static_asset_version(_: HttpRequest) -> dict[str, str]:
-    """Cache-bust local CSS while production keeps manifest-hashed asset names."""
-    css_root = Path(settings.BASE_DIR) / "static" / "css"
-    version = max((item.stat().st_mtime_ns for item in css_root.rglob("*.css")), default=0)
-    return {"static_asset_version": str(version)}
+    """Cache-bust static assets during development only.
+
+    In production WhiteNoise already puts a content hash into every file name,
+    so an extra query string adds nothing — while the directory scan it needs
+    would run on every single request. Development has no manifest, so without
+    the suffix the browser keeps serving a stale stylesheet after each edit.
+
+    The returned value is the full suffix (including "?"), so templates can
+    append it unconditionally and get nothing at all in production.
+    """
+    if not settings.DEBUG:
+        return {"static_asset_version": ""}
+
+    css_root = Path(settings.BASE_DIR) / "static"
+    version = max(
+        (item.stat().st_mtime_ns for item in css_root.rglob("*.css")),
+        default=0,
+    )
+    return {"static_asset_version": f"?v={version}"}

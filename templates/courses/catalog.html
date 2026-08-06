@@ -1,7 +1,71 @@
 {% extends 'base.html' %}
+
 {% block title %}Каталог курсов — МедЛМС{% endblock %}
+
 {% block content %}
-<section class="catalog-heading"><p class="eyebrow">МедЛМС · обучение</p><h1>Каталог курсов</h1><p>Выберите курс и начните обучение в удобном темпе.</p></section>
-{% if draft_courses %}<section class="draft-courses" aria-labelledby="draft-courses-title"><div class="section-heading"><div><p class="eyebrow">Только для вас</p><h2 id="draft-courses-title">Черновики курсов</h2></div></div><div class="course-cards">{% for course in draft_courses %}<article class="course-card draft-course-card">{% if course.cover %}<img class="catalog-cover" src="{{ course.cover.url }}" alt="Обложка черновика «{{ course.title }}»">{% else %}<div class="catalog-cover catalog-cover-placeholder"><span>Черновик</span></div>{% endif %}<div class="course-card-body"><p class="course-card-meta">Черновик · не виден студентам</p><h2>{{ course.title }}</h2><p class="course-card-description">{{ course.short_description|default:course.description|truncatechars:150 }}</p><div class="course-card-footer"><span>Продолжите наполнение</span><a class="button-link" href="{% url 'course-edit' course.id %}">Редактировать</a></div></div></article>{% endfor %}</div></section>{% endif %}
-<div class="course-cards">{% for run in runs %}<article class="course-card">{% if run.course.cover %}<img class="catalog-cover" src="{{ run.course.cover.url }}" alt="Обложка курса «{{ run.course.title }}»">{% else %}<div class="catalog-cover catalog-cover-placeholder"><span>МедЛМС</span></div>{% endif %}<div class="course-card-body"><p class="course-card-meta">{{ run.semester }} семестр · {{ run.academic_year }}</p><h2>{{ run.course.title }}</h2><p class="course-card-description">{{ run.course.short_description|default:run.course.description|truncatechars:150 }}</p><div class="course-card-footer"><span>Поток: {{ run.title }}</span>{% if user.is_authenticated %}<form method="post" action="{% url 'enroll' run.id %}">{% csrf_token %}<button>Начать обучение</button></form>{% endif %}</div></div></article>{% empty %}<p>Доступных опубликованных курсов нет.</p>{% endfor %}</div>
+<div class="ui-stack">
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">МедЛМС · обучение</p>
+    <h1 class="page-head__title">Каталог курсов</h1>
+    <p class="page-head__subtitle">Выберите курс и начните обучение в удобном темпе.</p>
+  </header>
+
+  {% comment %}
+    Черновики остаются отдельной секцией: это работа автора, а не публичный
+    каталог, и смешивать их в одну сетку значило бы показывать преподавателю
+    его незаконченный курс вперемешку с чужими опубликованными.
+    Но стиль у карточек общий — секция отличается только заголовком, без
+    собственных классов оформления.
+  {% endcomment %}
+  {% if draft_courses %}
+  <section class="ui-stack" aria-labelledby="drafts-title">
+    <div class="section-head">
+      <div>
+        <p class="page-head__eyebrow">Только для вас</p>
+        <h2 class="section-head__title" id="drafts-title">Черновики курсов</h2>
+      </div>
+    </div>
+    <div class="ui-card-grid">
+      {% for course in draft_courses %}
+        {% include 'components/course_card.html' with course=course heading_level=3 %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="ui-stack" aria-labelledby="published-title">
+    {% if draft_courses %}
+    <div class="section-head">
+      <h2 class="section-head__title" id="published-title">Доступные курсы</h2>
+    </div>
+    {% else %}
+    <h2 class="ui-visually-hidden" id="published-title">Доступные курсы</h2>
+    {% endif %}
+
+    {% if runs %}
+      <div class="ui-card-grid">
+        {% for run in runs %}
+          {% comment %}
+            Две ветки вместо одного include: партиал получает всё через
+            {% include ... with %} и не лезет во внешний контекст за
+            enrolled_run_ids. Проверку нельзя вынести во view — список
+            потоков общий и лежит в кэше, а запись на курс у каждого своя.
+          {% endcomment %}
+          {% if run.id in enrolled_run_ids %}
+            {% include 'components/course_card.html' with course=run.course run=run heading_level=3 is_enrolled=True %}
+          {% else %}
+            {% include 'components/course_card.html' with course=run.course run=run heading_level=3 is_enrolled=False %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ui-empty">
+        <h3 class="ui-empty__title">Доступных опубликованных курсов нет.</h3>
+        <p class="ui-empty__text">Курсы появятся здесь, как только преподаватели откроют запись.</p>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
 {% endblock %}
