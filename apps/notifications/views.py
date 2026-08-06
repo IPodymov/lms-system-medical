@@ -1,15 +1,22 @@
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .models import Notification
 
+NOTIFICATIONS_PER_PAGE = 20
+
 
 @login_required
 def list_notifications(request):
-    return render(
-        request, "notifications/list.html", {"notifications": request.user.notifications.all()}
-    )
+    # Сортировка обязательна: без неё Paginator режет неупорядоченную выборку
+    # и одно и то же уведомление может попасть на две страницы сразу.
+    # Порядок совпадает с индексом (user, is_read, created_at).
+    notifications = Paginator(
+        request.user.notifications.order_by("-created_at"), NOTIFICATIONS_PER_PAGE
+    ).get_page(request.GET.get("page"))
+    return render(request, "notifications/list.html", {"notifications": notifications})
 
 
 @login_required
