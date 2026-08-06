@@ -1,6 +1,41 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Обучение — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/learning-cards.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="page-header"><p class="eyebrow">Обучение</p><h1>Добро пожаловать</h1><p>Продолжайте с того места, где остановились.</p></section>
-<section class="dashboard-section"><div class="section-heading"><h2>Продолжить обучение</h2><a href="{% url 'course-catalog' %}">Открыть каталог →</a></div>
-<div class="course-list">{% for e in enrollments %}<a class="learning-card" href="{% url 'course-learning' e.id %}"><div><p class="card-kicker">{{ e.course_run.course.title }}</p><h3>{{ e.course_run.title }}</h3></div><div class="card-progress"><span>{{ e.progress_percent }}%</span><div class="mini-progress"><i style="width: {{ e.progress_percent }}%"></i></div></div></a>{% empty %}<div class="empty-state"><h2>Здесь появятся ваши курсы</h2><p>Выберите курс из каталога, чтобы начать обучение.</p><a class="button-link" href="{% url 'course-catalog' %}">Перейти в каталог</a></div>{% endfor %}</div></section>
+<div class="ui-stack">
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">Обучение</p>
+    <h1 class="page-head__title">Добро пожаловать</h1>
+    <p class="page-head__subtitle">Продолжайте с того места, где остановились.</p>
+  </header>
+
+  <section class="ui-stack" aria-labelledby="continue-title">
+    <div class="section-head">
+      <h2 class="section-head__title" id="continue-title">Продолжить обучение</h2>
+      <a class="ui-btn ui-btn--ghost ui-btn--sm" href="{% url 'course-catalog' %}">Открыть каталог →</a>
+    </div>
+
+    {% if enrollments %}
+      <div class="enrollment-grid">
+        {% for enrollment in enrollments %}
+          {% include 'components/enrollment_card.html' with heading_level=3 %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ui-empty">
+        <h3 class="ui-empty__title">Здесь появятся ваши курсы</h3>
+        <p class="ui-empty__text">Выберите курс из каталога, чтобы начать обучение.</p>
+        <a class="ui-btn ui-btn--primary" href="{% url 'course-catalog' %}">Перейти в каталог</a>
+      </div>
+    {% endif %}
+  </section>
+
+</div>
 {% endblock %}

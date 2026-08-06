@@ -11,7 +11,7 @@ body {
     min-height: 100vh;
     margin: 0;
     color: var(--color-text);
-    background: radial-gradient(circle at 50% -30%, #1a2a44 0, var(--color-background) 40rem);
+    background: radial-gradient(circle at 50% -30%, var(--color-backdrop-glow) 0, var(--color-background) 40rem);
     font-family: Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 15px;
     line-height: 1.5;

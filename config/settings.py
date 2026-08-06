@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "django_htmx",
+    "apps.ui",
     "apps.accounts",
     "apps.organizations",
     "apps.courses",

@@ -1,0 +1,608 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% comment %}
+  Живой каталог дизайн-системы. Доступен только сотрудникам (config.views.styleguide).
+
+  Разметка здесь намеренно многострочная и с отступами — в отличие от прежних
+  шаблонов, свёрнутых в одну строку. Это эталон того, как должны выглядеть
+  шаблоны после миграции: markup читается без горизонтальной прокрутки.
+{% endcomment %}
+
+{% block title %}Дизайн-система — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/components/styleguide.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block content %}
+<div class="sg">
+
+  <header class="sg-header">
+    <div>
+      <h1>Дизайн-система МедЛМС</h1>
+      <p>
+        Живой каталог компонентов. Коэффициенты контраста считаются прямо на этой
+        странице из применённых значений токенов, поэтому переключение темы сразу
+        показывает реальные цифры, а не переписанные из документации.
+      </p>
+    </div>
+    <nav class="sg-toc" aria-label="Разделы каталога">
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#colors">Цвет</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#type">Типографика</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#space">Отступы</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#buttons">Кнопки</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#forms">Формы</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#feedback">Сообщения</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#data">Данные</a>
+      <a class="ui-btn ui-btn--secondary ui-btn--sm" href="#states">Состояния</a>
+    </nav>
+  </header>
+
+  {# ------------------------------------------------------------------ ЦВЕТ #}
+  <section class="sg-section" id="colors">
+    <h2>Цвет</h2>
+    <p>
+      Каждый семантический цвет — это набор из четырёх токенов: сплошной для текста
+      и иконок, подложка, текст на подложке и её граница. Без полного набора любая
+      цветная плашка заставляет угадывать цвет текста и промахиваться мимо AA.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Поверхности</span>
+      <div class="sg-demo__stage sg-demo__stage--grid">
+        <div class="sg-pair">
+          <strong>Основной текст на карточке</strong>
+          <span>--color-text / --color-surface</span>
+          <span class="sg-swatch__ratio" data-sg-contrast="--color-text|--color-surface"></span>
+        </div>
+        <div class="sg-pair">
+          <strong class="ui-course-card__meta">Приглушённый текст</strong>
+          <span>--color-text-muted / --color-surface</span>
+          <span class="sg-swatch__ratio" data-sg-contrast="--color-text-muted|--color-surface"></span>
+        </div>
+        <div class="sg-pair">
+          <strong>Слабый текст (placeholder)</strong>
+          <span>--color-text-faint / --color-background</span>
+          <span class="sg-swatch__ratio" data-sg-contrast="--color-text-faint|--color-background"></span>
+        </div>
+        <div class="sg-pair">
+          <strong>Ссылка</strong>
+          <span>--color-primary / --color-surface</span>
+          <span class="sg-swatch__ratio" data-sg-contrast="--color-primary|--color-surface"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Семантика — сплошной цвет, подложка, текст на подложке</span>
+      <div class="sg-demo__stage sg-demo__stage--grid">
+        <div class="ui-alert ui-alert--info">
+          <div class="ui-alert__body">
+            <p class="ui-alert__title">Информация</p>
+            <span class="sg-swatch__ratio" data-sg-contrast="--color-on-info-surface|--color-info-surface"></span>
+          </div>
+        </div>
+        <div class="ui-alert ui-alert--success">
+          <div class="ui-alert__body">
+            <p class="ui-alert__title">Успех</p>
+            <span class="sg-swatch__ratio" data-sg-contrast="--color-on-success-surface|--color-success-surface"></span>
+          </div>
+        </div>
+        <div class="ui-alert ui-alert--warning">
+          <div class="ui-alert__body">
+            <p class="ui-alert__title">Предупреждение</p>
+            <span class="sg-swatch__ratio" data-sg-contrast="--color-on-warning-surface|--color-warning-surface"></span>
+          </div>
+        </div>
+        <div class="ui-alert ui-alert--danger">
+          <div class="ui-alert__body">
+            <p class="ui-alert__title">Ошибка</p>
+            <span class="sg-swatch__ratio" data-sg-contrast="--color-on-danger-surface|--color-danger-surface"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Правило:</strong> цвет никогда не единственный носитель смысла.
+      Статус дублируется формой (точка в бейдже), текстом или иконкой — иначе
+      плашка «Активна» и «Отключена» неразличимы при дальтонизме.
+    </p>
+  </section>
+
+  {# ---------------------------------------------------------- ТИПОГРАФИКА #}
+  <section class="sg-section" id="type">
+    <h2>Типографика</h2>
+    <p>
+      Шкала в <code>rem</code>: размер уважает настройку шрифта в браузере.
+      База 16px — минимум, при котором мобильный Safari не масштабирует страницу
+      при фокусе на поле ввода.
+    </p>
+
+    <div class="sg-demo">
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-38</span>
+          <span class="sg-type__sample" data-size="38">Заголовок страницы</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-30</span>
+          <span class="sg-type__sample" data-size="30">Заголовок первого уровня</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-24</span>
+          <span class="sg-type__sample" data-size="24">Заголовок раздела</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-20</span>
+          <span class="sg-type__sample" data-size="20">Подзаголовок</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-16</span>
+          <span class="sg-type__sample" data-size="16">Основной текст курса и заданий</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-14</span>
+          <span class="sg-type__sample" data-size="14">Метки полей, плотные таблицы</span>
+        </div>
+        <div class="sg-type__row">
+          <span class="sg-scale__name">--text-12</span>
+          <span class="sg-type__sample" data-size="12">Заголовки колонок, микрокопия</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Иерархия строится приглушением вторичного</strong>, а не увеличением
+      первичного. Прежде чем взять кегль крупнее, попробуйте сделать соседний текст
+      приглушённым (<code>--color-text-muted</code>) или легче по весу.
+    </p>
+  </section>
+
+  {# -------------------------------------------------------------- ОТСТУПЫ #}
+  <section class="sg-section" id="space">
+    <h2>Отступы и плотность</h2>
+    <p>
+      База 8px, имя токена равно значению в пикселях. Шаги 2/4/6 существуют для
+      бейджей и компактных элементов, которым 8px уже много.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Шкала</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="sg-scale">
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-4</span><span class="sg-scale__bar" data-w="4"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-8</span><span class="sg-scale__bar" data-w="8"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-12</span><span class="sg-scale__bar" data-w="12"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-16</span><span class="sg-scale__bar" data-w="16"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-24</span><span class="sg-scale__bar" data-w="24"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-32</span><span class="sg-scale__bar" data-w="32"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-48</span><span class="sg-scale__bar" data-w="48"></span></div>
+          <div class="sg-scale__row"><span class="sg-scale__name">--space-64</span><span class="sg-scale__bar" data-w="64"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Плотность переключается атрибутом</strong>
+      <code>data-density="compact"</code> на любом контейнере. Переопределяются
+      только семантические псевдонимы (<code>--density-*</code>, <code>--control-height</code>),
+      а не сама шкала — поэтому студенческие и рабочие экраны обслуживает одна
+      система токенов, а не две. Проверьте на таблице ниже.
+    </p>
+  </section>
+
+  {# --------------------------------------------------------------- КНОПКИ #}
+  <section class="sg-section" id="buttons">
+    <h2>Кнопки</h2>
+    <p>
+      Заменяют шесть прежних несводимых вариантов, включая primary, заданную
+      селектором по тегу <code>button</code>. Кнопка всегда получает класс явно.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Варианты</span>
+      <div class="sg-demo__stage">
+        <button class="ui-btn ui-btn--primary" type="button">Основное действие</button>
+        <button class="ui-btn ui-btn--secondary" type="button">Вторичное</button>
+        <button class="ui-btn ui-btn--ghost" type="button">Незаметное</button>
+        <button class="ui-btn ui-btn--danger-quiet" type="button">Отключить</button>
+        <button class="ui-btn ui-btn--danger" type="button">Удалить навсегда</button>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Размеры и состояния</span>
+      <div class="sg-demo__stage">
+        <button class="ui-btn ui-btn--primary ui-btn--sm" type="button">Мелкая</button>
+        <button class="ui-btn ui-btn--primary" type="button">Обычная</button>
+        <button class="ui-btn ui-btn--primary ui-btn--lg" type="button">Крупная</button>
+        <button class="ui-btn ui-btn--primary" type="button" disabled>Недоступна</button>
+        <button class="ui-btn ui-btn--primary" type="button" data-sg-loading>
+          <span>Нажмите — загрузка 2с</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sg-states-wrap">
+    <table class="sg-states">
+      <caption class="ui-visually-hidden">Состояния кнопки</caption>
+      <thead>
+        <tr><th scope="col">Состояние</th><th scope="col">Как задаётся</th><th scope="col">Что меняется</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Обычное</td><td><code>.ui-btn--primary</code></td><td>Заливка <code>--color-primary</code></td></tr>
+        <tr><td>Наведение</td><td><code>:hover</code></td><td><code>--color-primary-hover</code></td></tr>
+        <tr><td>Нажатие</td><td><code>:active</code></td><td><code>--color-primary-active</code></td></tr>
+        <tr><td>Фокус</td><td><code>:focus-visible</code></td><td>Кольцо 2px + отступ 2px, контраст ≥ 3:1</td></tr>
+        <tr><td>Отключена</td><td><code>[disabled]</code></td><td>Прозрачность 0.5, курсор <code>not-allowed</code>, hover не срабатывает</td></tr>
+        <tr><td>Загрузка</td><td><code>.is-loading</code> + <code>aria-busy</code></td><td>Подпись скрывается, появляется спиннер, клики блокируются, ширина не прыгает</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  {# ---------------------------------------------------------------- ФОРМЫ #}
+  <section class="sg-section" id="forms">
+    <h2>Формы</h2>
+    <p>
+      Сегодня в проекте три несовместимых способа рендера формы и ни одного стиля
+      ошибки поля. Ниже — единая раскладка поля и паттерн ошибок по образцу
+      GOV.UK: сводка вверху плюс сообщение у поля, тексты совпадают дословно.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Поля</span>
+      <div class="sg-demo__stage sg-demo__stage--grid">
+        <div class="ui-field">
+          <label class="ui-label" for="sg-name">Название курса</label>
+          <input class="ui-input" id="sg-name" type="text" placeholder="Основы клинического мышления" />
+          <span class="ui-hint">Увидят слушатели в каталоге</span>
+        </div>
+
+        <div class="ui-field">
+          <label class="ui-label" for="sg-role">Роль<span class="ui-label__optional"> — необязательно</span></label>
+          <select class="ui-select" id="sg-role">
+            <option>Преподаватель</option>
+            <option>Ассистент</option>
+            <option>Куратор</option>
+          </select>
+        </div>
+
+        <div class="ui-field" data-sg-validate>
+          <label class="ui-label" for="sg-email">Email — введите текст без «@»</label>
+          <input class="ui-input" id="sg-email" type="text" aria-describedby="sg-email-error" />
+          <span class="ui-error" id="sg-email-error" hidden>Введите адрес в формате имя@домен</span>
+        </div>
+
+        <div class="ui-field">
+          <label class="ui-label" for="sg-disabled">Недоступное поле</label>
+          <input class="ui-input" id="sg-disabled" type="text" value="Нельзя изменить" disabled />
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Флажки и переключатели — цель ≥ 24×24px (WCAG 2.5.8)</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <label class="ui-check"><input type="radio" name="sg-choice" checked /> Один правильный ответ</label>
+        <label class="ui-check"><input type="radio" name="sg-choice" /> Несколько правильных ответов</label>
+        <label class="ui-check"><input type="checkbox" /> Показывать курс в каталоге</label>
+        <label class="ui-check"><input type="checkbox" disabled /> Недоступный вариант</label>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Сводка ошибок — ставится выше &lt;h1&gt;, получает фокус при загрузке</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="ui-error-summary" role="alert" tabindex="-1">
+          <h3 class="ui-error-summary__title">Проверьте форму</h3>
+          <ul class="ui-error-summary__list">
+            <li><a href="#sg-email">Введите адрес в формате имя@домен</a></li>
+            <li><a href="#sg-name">Укажите название курса</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Валидация:</strong> проверка на <code>blur</code>, но сообщение гаснет
+      сразу при исправлении ввода, а не при повторном уходе с поля — иначе
+      пользователь считает, что правка не сработала. Поле связывается с ошибкой
+      через <code>aria-describedby</code> и получает <code>aria-invalid</code>.
+    </p>
+  </section>
+
+  {# ------------------------------------------------------------ СООБЩЕНИЯ #}
+  <section class="sg-section" id="feedback">
+    <h2>Сообщения и уведомления</h2>
+    <p>
+      Сейчас <code>messages.error()</code> и <code>messages.success()</code>
+      рендерятся одной синей плашкой и неотличимы. Четыре уровня ниже решают это.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Встроенные сообщения</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="ui-alert ui-alert--info" role="status">
+          <div class="ui-alert__body">Запись на поток открыта до 30 сентября.</div>
+        </div>
+        <div class="ui-alert ui-alert--success" role="status">
+          <div class="ui-alert__body">Курс сохранён и опубликован в каталоге.</div>
+        </div>
+        <div class="ui-alert ui-alert--warning" role="status">
+          <div class="ui-alert__body">У курса нет ни одного учебного блока — слушатели увидят пустую программу.</div>
+        </div>
+        <div class="ui-alert ui-alert--danger" role="alert">
+          <div class="ui-alert__body">
+            <p class="ui-alert__title">Не удалось записать на курс</p>
+            Срок действия ссылки истёк. Попросите куратора создать новую.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Всплывающие — область объявлена заранее, иначе скринридер молчит</span>
+      <div class="sg-demo__stage">
+        <button class="ui-btn ui-btn--secondary" type="button" data-sg-toast="success" data-sg-toast-text="Изменения сохранены">Показать успех</button>
+        <button class="ui-btn ui-btn--secondary" type="button" data-sg-toast="danger" data-sg-toast-text="Не удалось сохранить изменения">Показать ошибку</button>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Роли:</strong> <code>role="status"</code> для обычных сообщений,
+      <code>role="alert"</code> для ошибок. Сейчас в базовом шаблоне у всех
+      сообщений стоит <code>status</code>, поэтому ошибку скринридер не объявляет
+      немедленно.
+    </p>
+  </section>
+
+  {# ----------------------------------------------------------- ДАННЫЕ #}
+  <section class="sg-section" id="data">
+    <h2>Карточки, таблицы, навигация</h2>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Карточка курса и сетка каталога</span>
+      <div class="sg-demo__stage">
+        <div class="ui-card-grid">
+          <article class="ui-card ui-course-card">
+            <div class="ui-course-card__cover ui-course-card__cover--placeholder">МедЛМС</div>
+            <div class="ui-course-card__body">
+              <p class="ui-course-card__meta">2 семестр · 2026/2027</p>
+              <h3 class="ui-course-card__title">Основы клинического мышления</h3>
+              <p class="ui-course-card__description">Разбор клинических случаев, дифференциальная диагностика и работа с жалобами пациента.</p>
+              <div class="ui-card__footer">
+                <span class="ui-badge ui-badge--success">Запись открыта</span>
+                <button class="ui-btn ui-btn--primary ui-btn--sm" type="button">Начать</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="ui-card ui-course-card">
+            <div class="ui-course-card__cover ui-course-card__cover--placeholder">Черновик</div>
+            <div class="ui-course-card__body">
+              <p class="ui-course-card__meta">Не виден слушателям</p>
+              <h3 class="ui-course-card__title">Топографическая анатомия</h3>
+              <p class="ui-course-card__description">Продолжите наполнение программы, чтобы открыть курс для записи.</p>
+              <div class="ui-card__footer">
+                <span class="ui-badge ui-badge--neutral">Черновик</span>
+                <button class="ui-btn ui-btn--secondary ui-btn--sm" type="button">Редактировать</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Таблица — попробуйте плотный режим</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div>
+          <button class="ui-btn ui-btn--secondary ui-btn--sm" type="button"
+                  data-sg-density="#sg-table-scope" aria-pressed="false">Включить плотный режим</button>
+        </div>
+        <div id="sg-table-scope">
+          <div class="ui-table-wrap">
+            <table class="ui-table">
+              <caption class="ui-visually-hidden">Пример журнала успеваемости</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Слушатель</th>
+                  <th scope="col">Группа</th>
+                  <th scope="col" class="ui-table__num">Прогресс</th>
+                  <th scope="col">Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Иванова А. С.<span class="ui-table__cell-sub">ivanova@example.test</span></td>
+                  <td>СД-21</td>
+                  <td class="ui-table__num">92%</td>
+                  <td><span class="ui-badge ui-badge--success">Завершён</span></td>
+                </tr>
+                <tr>
+                  <td>Петров Д. М.<span class="ui-table__cell-sub">petrov@example.test</span></td>
+                  <td>СД-21</td>
+                  <td class="ui-table__num">47%</td>
+                  <td><span class="ui-badge ui-badge--info">В процессе</span></td>
+                </tr>
+                <tr>
+                  <td>Сидорова Е. В.<span class="ui-table__cell-sub">sidorova@example.test</span></td>
+                  <td>СД-22</td>
+                  <td class="ui-table__num">0%</td>
+                  <td><span class="ui-badge ui-badge--warning">Не начинал</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Вкладки, аккордеон, пагинация</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <nav class="ui-tabs" aria-label="Разделы управления">
+          <a class="ui-tab" href="#data" aria-current="page">Группы</a>
+          <a class="ui-tab" href="#data">Пользователи</a>
+          <a class="ui-tab" href="#data">Потоки</a>
+          <a class="ui-tab" href="#data">Приглашения</a>
+        </nav>
+
+        <details class="ui-accordion">
+          <summary>Добавить учебный блок</summary>
+          <div class="ui-accordion__body ui-stack">
+            <p class="ui-prose">Блок — единица обучения внутри темы: текст, файл или тест.</p>
+            <div class="ui-cluster">
+              <button class="ui-btn ui-btn--secondary ui-btn--sm" type="button">Текст</button>
+              <button class="ui-btn ui-btn--secondary ui-btn--sm" type="button">Файл</button>
+              <button class="ui-btn ui-btn--secondary ui-btn--sm" type="button">Тест</button>
+            </div>
+          </div>
+        </details>
+
+        <nav class="ui-pagination" aria-label="Страницы">
+          <a class="ui-page-link" href="#data" aria-label="Предыдущая страница">←</a>
+          <a class="ui-page-link" href="#data" aria-current="page">1</a>
+          <a class="ui-page-link" href="#data">2</a>
+          <a class="ui-page-link" href="#data">3</a>
+          <span class="ui-pagination__status">из 12</span>
+          <a class="ui-page-link" href="#data" aria-label="Следующая страница">→</a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Бейджи, счётчик, аватары</span>
+      <div class="sg-demo__stage">
+        <span class="ui-badge ui-badge--neutral">Черновик</span>
+        <span class="ui-badge ui-badge--info">В процессе</span>
+        <span class="ui-badge ui-badge--success">Активна</span>
+        <span class="ui-badge ui-badge--warning">Истекает</span>
+        <span class="ui-badge ui-badge--danger">Отключена</span>
+        <span class="ui-count">7</span>
+        <span class="ui-avatar ui-avatar--sm">ИА</span>
+        <span class="ui-avatar">ПД</span>
+        <span class="ui-avatar ui-avatar--lg">СЕ</span>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Прогресс — полоса и посегментный</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="ui-progress">
+          <div class="ui-progress__head">
+            <span>Прогресс по курсу</span>
+            <span class="ui-progress__value">62%</span>
+          </div>
+          <div class="ui-progress__track">
+            <div class="ui-progress__bar" style="--progress: 62%"></div>
+          </div>
+        </div>
+
+        <div class="ui-progress">
+          <div class="ui-progress__head">
+            <span>Раздел 1. Введение</span>
+            <span class="ui-progress__value">3 из 6</span>
+          </div>
+          <div class="ui-progress-segments" role="img" aria-label="Пройдено 3 блока из 6, вы находитесь на четвёртом">
+            <span class="ui-progress-segments__item is-done"></span>
+            <span class="ui-progress-segments__item is-done"></span>
+            <span class="ui-progress-segments__item is-done"></span>
+            <span class="ui-progress-segments__item is-current"></span>
+            <span class="ui-progress-segments__item"></span>
+            <span class="ui-progress-segments__item"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sg-note">
+      <strong>Почему сегменты:</strong> «62%» не отвечает на вопрос «сколько мне
+      осталось и что дальше» — а это главный вопрос на дашборде слушателя.
+      Контейнер получает <code>role="img"</code> и текстовую сводку в
+      <code>aria-label</code>, иначе для скринридера это шесть пустых элементов.
+    </p>
+  </section>
+
+  {# ------------------------------------------------------------ СОСТОЯНИЯ #}
+  <section class="sg-section" id="states">
+    <h2>Состояния страницы</h2>
+    <p>
+      Пустое, загрузка, ошибка и подтверждение. Прежде в проекте не было ни одного
+      состояния загрузки и ни одного скелетона.
+    </p>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Пустое состояние — всегда с действием</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="ui-empty">
+          <h3 class="ui-empty__title">Здесь появятся ваши курсы</h3>
+          <p class="ui-empty__text">Выберите курс из каталога, чтобы начать обучение и видеть прогресс на этой странице.</p>
+          <button class="ui-btn ui-btn--primary" type="button">Открыть каталог</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Скелетон — только для областей, подгружаемых отдельным запросом</span>
+      <div class="sg-demo__stage sg-demo__stage--stack">
+        <div class="ui-card ui-stack">
+          <div class="ui-skeleton ui-skeleton--title"></div>
+          <div class="ui-skeleton ui-skeleton--text"></div>
+          <div class="ui-skeleton ui-skeleton--text"></div>
+          <div class="ui-skeleton ui-skeleton--block"></div>
+        </div>
+        <div class="ui-cluster">
+          <span class="ui-spinner" role="status" aria-label="Загрузка"></span>
+          <span class="ui-hint">Спиннер — для отдельного модуля, скелетон — для области с известной структурой</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sg-demo">
+      <span class="sg-demo__label">Модальное подтверждение вместо нативного confirm()</span>
+      <div class="sg-demo__stage">
+        <button class="ui-btn ui-btn--danger-quiet" type="button" data-sg-modal-open="#sg-modal">Удалить блок</button>
+      </div>
+    </div>
+
+    <div class="sg-states-wrap">
+    <table class="sg-states">
+      <caption class="ui-visually-hidden">Пороги индикации загрузки</caption>
+      <thead>
+        <tr><th scope="col">Длительность</th><th scope="col">Что показываем</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>менее 1 с</td><td>Ничего — индикатор только мешает</td></tr>
+        <tr><td>1–10 с</td><td>Спиннер в кнопке или скелетон области</td></tr>
+        <tr><td>более 10 с</td><td>Прогресс с оценкой (импорт студентов из Excel)</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+</div>
+
+<dialog class="ui-modal" id="sg-modal" aria-labelledby="sg-modal-title">
+  <div class="ui-modal__header">
+    <h2 class="ui-modal__title" id="sg-modal-title">Удалить блок «Строение сердца»?</h2>
+    <button class="ui-modal__close" type="button" data-sg-modal-close aria-label="Закрыть">✕</button>
+  </div>
+  <div class="ui-modal__body">
+    <p>Блок и связанные с ним материалы будут удалены без возможности восстановления. Прогресс слушателей по этому блоку тоже пропадёт.</p>
+  </div>
+  <div class="ui-modal__footer">
+    <button class="ui-btn ui-btn--secondary" type="button" data-sg-modal-close>Отмена</button>
+    <button class="ui-btn ui-btn--danger" type="button" data-sg-modal-close>Удалить</button>
+  </div>
+</dialog>
+
+<div class="ui-toast-region" data-sg-toast-region></div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/styleguide.js' %}{{ static_asset_version }}" defer></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% comment %}
+  Одно поле формы. Рендерится тегом {% form_field form.<поле> %}
+  из apps.ui.templatetags.form_tags — он же вычисляет классы виджета
+  и ARIA-атрибуты.
+
+  Не вызывать этот файл через {% include %} напрямую: контекст готовит тег.
+
+  Флажок и радио отличаются раскладкой (метка справа от квадратика),
+  поэтому для них отдельная ветка.
+{% endcomment %}
+{% if is_choice %}
+  <div class="ui-field{% if errors %} is-invalid{% endif %}">
+    <label class="ui-check" for="{{ field.id_for_label }}">
+      {{ widget }}
+      <span>{{ field.label }}</span>
+    </label>
+    {% if hint %}<span class="ui-hint" id="{{ hint_id }}">{{ hint }}</span>{% endif %}
+    {% if errors %}<span class="ui-error" id="{{ error_id }}">{{ errors.0 }}</span>{% endif %}
+  </div>
+{% else %}
+  <div class="ui-field{% if errors %} is-invalid{% endif %}">
+    <label class="ui-label" for="{{ field.id_for_label }}">
+      {{ field.label }}{% if not field.field.required %}<span class="ui-label__optional"> — необязательно</span>{% endif %}
+    </label>
+    {{ widget }}
+    {% if hint %}<span class="ui-hint" id="{{ hint_id }}">{{ hint }}</span>{% endif %}
+    {% if errors %}<span class="ui-error" id="{{ error_id }}">{{ errors.0 }}</span>{% endif %}
+  </div>
+{% endif %}

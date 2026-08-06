@@ -1,1 +1,31 @@
-{% extends 'base.html' %}{% block content %}<section class="auth"><p class="eyebrow">МедЛМС</p><h1>Войдите в обучение</h1><p>Используйте данные университета, чтобы продолжить работу.</p><form method="post" class="form-card">{% csrf_token %}{{ form.as_p }}<button>Войти</button><p class="auth-footer">Ещё нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p></form></section>{% endblock %}
+{% extends 'base.html' %}
+{% load static form_tags %}
+
+{% block title %}Вход — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/auth.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block content %}
+<section class="auth">
+  {% form_errors form "Не удалось войти" %}
+
+  <div class="auth__header">
+    <p class="auth__eyebrow">МедЛМС</p>
+    <h1 class="auth__title">Войдите в обучение</h1>
+    <p class="auth__subtitle">Используйте данные университета, чтобы продолжить работу.</p>
+  </div>
+
+  <form class="auth__form" method="post" novalidate>
+    {% csrf_token %}
+    {% form_field form.username autofocus=True autocomplete="username" %}
+    {% form_field form.password autocomplete="current-password" %}
+    {% if form.fields.remember_me %}{% form_field form.remember_me %}{% endif %}
+    <button class="ui-btn ui-btn--primary ui-btn--block" type="submit" data-submit-once>Войти</button>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  </form>
+
+  <p class="auth__footer">Ещё нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+</section>
+{% endblock %}

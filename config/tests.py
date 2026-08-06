@@ -34,6 +34,35 @@ class AdminUrlTests(SimpleTestCase):
             resolve("/admin/")
 
 
+class StyleguideTests(TestCase):
+    """Каталог компонентов — служебная страница, она не должна быть публичной."""
+
+    def test_anonymous_visitor_is_sent_to_login(self):
+        response = self.client.get("/styleguide/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
+
+    def test_regular_user_has_no_access(self):
+        user = User.objects.create_user(email="student@example.test", password="safe-password-123")
+        self.client.force_login(user)
+
+        response = self.client.get("/styleguide/")
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_staff_member_sees_the_catalog(self):
+        staff = User.objects.create_user(
+            email="staff@example.test", password="safe-password-123", is_staff=True
+        )
+        self.client.force_login(staff)
+
+        response = self.client.get("/styleguide/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "styleguide.html")
+
+
 class AdminAccessTests(TestCase):
     @override_settings(ADMIN_URL="admin/")
     def test_superuser_can_open_admin_in_debug_mode(self):

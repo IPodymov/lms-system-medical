@@ -4,12 +4,15 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from config.views import styleguide
+
 urlpatterns = []
 
 if settings.ADMIN_URL:
     urlpatterns.append(path(settings.ADMIN_URL, admin.site.urls))
 
 urlpatterns += [
+    path("styleguide/", styleguide, name="styleguide"),
     path("", include("apps.accounts.urls")),
     path("courses/", include("apps.courses.urls")),
     path("learning/", include("apps.learning.urls")),

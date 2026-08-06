@@ -1,0 +1,1269 @@
+/* =========================================================================
+   Слой компонентов МедЛМС
+   -------------------------------------------------------------------------
+   Все классы имеют префикс ui-. Это не украшение: в проекте живёт ~3800
+   строк прежнего CSS, где заняты имена .card, .alert, .pagination,
+   .empty-state, .avatar, .progress-*. Префикс позволяет новому слою
+   сосуществовать со старым и мигрировать страницы по одной, не ломая те,
+   до которых очередь не дошла.
+
+   Правила слоя:
+   - только токены, ни одного литерального цвета или размера;
+   - один класс — одна ответственность, состояния через модификатор
+     (--primary) или состояние (.is-loading, .is-invalid, [disabled]);
+   - никакого !important и никакой вложенности глубже двух уровней;
+   - отступы задаёт родитель через gap, а не каждый потомок своим margin;
+   - минимальная цель для указателя 24x24px (WCAG 2.2 SC 2.5.8).
+
+   Спецификация состояний: docs/redesign/02-design-system.md
+   Живой каталог: /styleguide/
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Общее
+   ------------------------------------------------------------------------- */
+
+.ui-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Единое кольцо фокуса для всего слоя. Всегда видимое, всегда с отступом от
+   элемента, контраст к обеим поверхностям >= 3:1. */
+.ui-btn:focus-visible,
+.ui-input:focus-visible,
+.ui-select:focus-visible,
+.ui-textarea:focus-visible,
+.ui-check input:focus-visible,
+.ui-tab:focus-visible,
+.ui-page-link:focus-visible,
+.ui-card--interactive:focus-visible,
+.ui-accordion > summary:focus-visible,
+.ui-modal__close:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Вертикальный ритм: расстояние задаёт контейнер, а не элементы. */
+.ui-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--density-stack);
+}
+
+.ui-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+/* У flex-потомка min-width по умолчанию равен auto, поэтому широкое
+   содержимое (таблица, длинный код, <pre>) не даёт колонке сжаться и
+   растягивает страницу по горизонтали — даже если внутри уже есть
+   контейнер с overflow-x. Обнуление возвращает возможность сжиматься,
+   и прокрутка остаётся внутри своего контейнера, как и задумано. */
+.ui-stack > *,
+.ui-cluster > * {
+  min-width: 0;
+}
+
+/* Читаемый текстовый блок. Ограничение длины строки применяется адресно,
+   а не глобально ко всем <p> — иначе страдают абзацы в карточках и ячейках. */
+.ui-prose {
+  max-width: var(--measure);
+  line-height: var(--leading-normal);
+}
+
+/* -------------------------------------------------------------------------
+   Шапка страницы и заголовок раздела
+
+   Заменяют семь классов прежнего слоя, описывавших одну и ту же сущность
+   «заголовок + подзаголовок + необязательное действие справа»: .page-header,
+   .catalog-heading, .builder-header, .management-header, .group-detail-header,
+   .section-heading, .form-card-heading. Отступы у всех семи были разные.
+   ------------------------------------------------------------------------- */
+
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.page-head__eyebrow {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.page-head__title {
+  margin: 0;
+  font-size: var(--text-30);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.page-head__subtitle {
+  max-width: var(--measure);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-16);
+  line-height: var(--leading-normal);
+}
+
+/* Действие справа переносится под заголовок, когда не помещается: у flex-wrap
+   нет медиазапроса, поэтому поведение одинаково на любой ширине. */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.section-head__title {
+  margin: 0;
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* -------------------------------------------------------------------------
+   Кнопки
+   ------------------------------------------------------------------------- */
+
+.ui-btn {
+  display: inline-flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0 var(--space-16);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.ui-btn--primary {
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
+}
+
+.ui-btn--primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.ui-btn--primary:active {
+  background: var(--color-primary-active);
+}
+
+.ui-btn--secondary {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.ui-btn--secondary:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-hover);
+}
+
+.ui-btn--secondary:active {
+  background: var(--color-surface-sunken);
+}
+
+.ui-btn--ghost {
+  color: var(--color-text-muted);
+}
+
+.ui-btn--ghost:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.ui-btn--ghost:active {
+  background: var(--color-surface-sunken);
+}
+
+/* Деструктивное действие. Заливкой — только там, где удаление и есть
+   основное действие экрана (подтверждение в модалке). В остальных местах
+   используется вариант --danger-quiet, чтобы красная заливка не соревновалась
+   за внимание с основным действием страницы. */
+.ui-btn--danger {
+  color: var(--color-primary-contrast);
+  background: var(--color-danger);
+}
+
+.ui-btn--danger:hover {
+  background: var(--color-on-danger-surface);
+}
+
+.ui-btn--danger-quiet {
+  color: var(--color-danger);
+  background: transparent;
+  border-color: var(--color-danger-border);
+}
+
+.ui-btn--danger-quiet:hover {
+  background: var(--color-danger-surface);
+}
+
+.ui-btn--sm {
+  min-height: var(--control-height-sm);
+  min-width: var(--control-height-sm);
+  padding: 0 var(--space-12);
+  font-size: var(--text-13);
+}
+
+.ui-btn--lg {
+  min-height: calc(var(--control-height) + var(--space-8));
+  padding: 0 var(--space-24);
+  font-size: var(--text-16);
+}
+
+.ui-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* Кнопка-иконка. Квадратная, без подписи — обязателен aria-label. */
+.ui-btn--icon {
+  padding: 0;
+}
+
+.ui-btn[disabled],
+.ui-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-btn[disabled]:hover,
+.ui-btn[aria-disabled="true"]:hover {
+  background: inherit;
+}
+
+/* Загрузка. Подпись остаётся на месте (кнопка не прыгает), но скрывается
+   от глаза и от скринридера, а рядом появляется спиннер и текстовый статус. */
+.ui-btn.is-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.ui-btn.is-loading > * {
+  visibility: hidden;
+}
+
+.ui-btn.is-loading::after {
+  position: absolute;
+  width: var(--space-16);
+  height: var(--space-16);
+  content: "";
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: ui-spin 600ms linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn.is-loading::after {
+    animation-duration: 1600ms;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Поля ввода
+   ------------------------------------------------------------------------- */
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* margin: 0 здесь и ниже — не декор, а нейтрализация глобальных селекторов
+   прежнего слоя (label { margin: 16px 0 }, input { margin-top: 5px },
+   table { border }). Пока legacy-файлы не удалены, новый компонент обязан
+   явно занулять то, что они навязывают по тегу. Отступы принадлежат
+   контейнеру (.ui-field, .ui-stack), а не самому элементу. */
+.ui-label {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+}
+
+.ui-label__optional {
+  color: var(--color-text-muted);
+  font-weight: var(--weight-regular);
+}
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  min-height: var(--control-height);
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-16);
+  line-height: var(--leading-snug);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.ui-input:hover,
+.ui-select:hover,
+.ui-textarea:hover {
+  border-color: var(--color-border-hover);
+}
+
+.ui-input:focus,
+.ui-select:focus,
+.ui-textarea:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--color-text-faint);
+}
+
+.ui-textarea {
+  min-height: calc(var(--control-height) * 2.5);
+  resize: vertical;
+}
+
+.ui-select {
+  padding-right: var(--space-32);
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentcolor 50%),
+    linear-gradient(135deg, currentcolor 50%, transparent 50%);
+  background-repeat: no-repeat;
+  background-position:
+    right var(--space-16) center,
+    right var(--space-12) center;
+  background-size: 5px 5px, 5px 5px;
+}
+
+.ui-input[disabled],
+.ui-select[disabled],
+.ui-textarea[disabled] {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+  background: var(--color-surface-sunken);
+}
+
+/* Ошибка поля. Красный цвет дублируется иконкой и текстом — цвет никогда
+   не единственный носитель информации (NN/g, WCAG 1.4.1). */
+.ui-field.is-invalid .ui-input,
+.ui-field.is-invalid .ui-select,
+.ui-field.is-invalid .ui-textarea {
+  border-color: var(--color-danger);
+}
+
+.ui-field.is-invalid .ui-input:focus,
+.ui-field.is-invalid .ui-select:focus,
+.ui-field.is-invalid .ui-textarea:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
+}
+
+.ui-hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}
+
+.ui-error {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  color: var(--color-danger);
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+}
+
+/* display: flex перебивает атрибут hidden, поэтому скрытие задаётся явно. */
+.ui-error[hidden] {
+  display: none;
+}
+
+.ui-error::before {
+  flex: none;
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05em;
+  height: 1.05em;
+  color: var(--color-primary-contrast);
+  font-size: var(--text-11);
+  background: var(--color-danger);
+  border-radius: var(--radius-full);
+}
+
+/* -------------------------------------------------------------------------
+   Флажки и переключатели
+   ------------------------------------------------------------------------- */
+
+.ui-check {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-start;
+  min-height: var(--space-24);
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--text-16);
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.ui-check:hover {
+  background: var(--color-surface-raised);
+}
+
+.ui-check input {
+  flex: none;
+  width: var(--space-20);
+  height: var(--space-20);
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.ui-check:has(input:checked) {
+  background: var(--color-primary-surface);
+  border-color: var(--color-primary-border);
+}
+
+.ui-check:has(input[disabled]) {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+  background: var(--color-surface-sunken);
+}
+
+/* -------------------------------------------------------------------------
+   Сводка ошибок формы (паттерн GOV.UK)
+   Ставится в начало <main>, выше <h1>. Текст каждого пункта обязан
+   дословно совпадать с текстом ошибки у поля.
+   ------------------------------------------------------------------------- */
+
+.ui-error-summary {
+  padding: var(--space-16) var(--space-20);
+  color: var(--color-on-danger-surface);
+  background: var(--color-danger-surface);
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius-md);
+}
+
+.ui-error-summary:focus {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.ui-error-summary__title {
+  margin: 0 0 var(--space-8);
+  font-size: var(--text-18);
+  font-weight: var(--weight-bold);
+}
+
+.ui-error-summary__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding-left: var(--space-20);
+}
+
+.ui-error-summary__list a {
+  color: inherit;
+  font-weight: var(--weight-medium);
+  text-decoration: underline;
+}
+
+/* -------------------------------------------------------------------------
+   Сообщения и уведомления
+   ------------------------------------------------------------------------- */
+
+.ui-alert {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-start;
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-14);
+  border: 1px solid;
+  border-radius: var(--radius-md);
+}
+
+.ui-alert__icon {
+  flex: none;
+  width: var(--space-20);
+  height: var(--space-20);
+}
+
+.ui-alert__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-alert__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-alert--info {
+  color: var(--color-on-info-surface);
+  background: var(--color-info-surface);
+  border-color: var(--color-info-border);
+}
+
+.ui-alert--success {
+  color: var(--color-on-success-surface);
+  background: var(--color-success-surface);
+  border-color: var(--color-success-border);
+}
+
+.ui-alert--warning {
+  color: var(--color-on-warning-surface);
+  background: var(--color-warning-surface);
+  border-color: var(--color-warning-border);
+}
+
+.ui-alert--danger {
+  color: var(--color-on-danger-surface);
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger-border);
+}
+
+/* Всплывающие уведомления. Область живёт в base.html и всегда присутствует
+   в DOM, иначе скринридер не объявит сообщение, добавленное вместе с
+   контейнером. Роль назначается по важности: status для обычных, alert
+   для ошибок. */
+.ui-toast-region {
+  position: fixed;
+  right: var(--space-16);
+  bottom: var(--space-16);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: min(380px, calc(100vw - var(--space-32)));
+  pointer-events: none;
+}
+
+.ui-toast {
+  pointer-events: auto;
+  box-shadow: var(--shadow-overlay);
+  animation: ui-toast-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-8));
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Карточки
+   ------------------------------------------------------------------------- */
+
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--density-card-padding);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.ui-card__header {
+  display: flex;
+  gap: var(--space-12);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ui-card__title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.ui-card__footer {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Кликабельная карточка. Отдельный модификатор, потому что ей нужны
+   курсор, hover и собственное кольцо фокуса. */
+.ui-card--interactive {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.ui-card--interactive:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-hover);
+}
+
+/* Карточка курса в каталоге */
+.ui-course-card {
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+.ui-course-card__cover {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  object-fit: cover;
+  background: var(--color-surface-sunken);
+}
+
+.ui-course-card__cover--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+  font-size: var(--text-13);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.ui-course-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--density-card-padding);
+}
+
+.ui-course-card__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.ui-course-card__title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.ui-course-card__description {
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+/* Строка потока (или подсказка автору черновика) между описанием и подвалом. */
+.ui-course-card__run {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}
+
+/* Сетка карточек. Ровно одно правило на все каталоги — auto-fill убирает
+   необходимость в отдельных media-запросах для 2/3/4 колонок. */
+.ui-card-grid {
+  display: grid;
+  gap: var(--space-16);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+
+/* -------------------------------------------------------------------------
+   Таблицы
+   ------------------------------------------------------------------------- */
+
+/* max-width вместе с min-width: 0 — обязательная пара. Первое не даёт
+   контейнеру перерасти родителя (внутри flex/grid одного min-width мало),
+   второе разрешает ему сжиматься. Без обоих таблица растягивает страницу
+   по горизонтали вместо того, чтобы прокручиваться внутри себя. */
+.ui-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ui-table {
+  width: 100%;
+  font-size: var(--text-14);
+  background: transparent;
+  border: 0;
+  border-collapse: collapse;
+}
+
+.ui-table th,
+.ui-table td {
+  padding: var(--density-row-y) var(--space-16);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-table th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raised);
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--color-surface-raised);
+}
+
+.ui-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ui-table tbody tr:hover {
+  background: var(--color-surface-raised);
+}
+
+/* Числовые колонки выравниваются по правому краю и получают табличные
+   цифры — иначе столбец процентов невозможно сравнивать взглядом. */
+.ui-table__num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ui-table__cell-sub {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}
+
+/* -------------------------------------------------------------------------
+   Модальное окно (нативный <dialog>)
+   showModal() уже даёт ловушку фокуса, закрытие по Escape и инертность
+   фона. Требуются aria-labelledby на заголовок и возврат фокуса на триггер.
+   ------------------------------------------------------------------------- */
+
+.ui-modal {
+  width: min(520px, calc(100vw - var(--space-32)));
+  max-height: calc(100vh - var(--space-64));
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+.ui-modal::backdrop {
+  background: var(--color-backdrop);
+}
+
+.ui-modal__header {
+  display: flex;
+  gap: var(--space-16);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-20) var(--space-24) var(--space-12);
+}
+
+.ui-modal__title {
+  margin: 0;
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.ui-modal__body {
+  padding: 0 var(--space-24);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.ui-modal__footer {
+  display: flex;
+  gap: var(--space-8);
+  justify-content: flex-end;
+  padding: var(--space-20) var(--space-24);
+}
+
+/* min-height и padding обнуляются по той же причине, что и у иконок в
+   app-shell.css: глобальное button { min-height: 40px; padding: 9px 15px }
+   из прежнего слоя иначе распирает кнопку и сплющивает её содержимое. */
+.ui-modal__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  min-height: 0;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-16);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.ui-modal__close:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+/* -------------------------------------------------------------------------
+   Вкладки
+   ------------------------------------------------------------------------- */
+
+.ui-tabs {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-tab {
+  padding: var(--space-12) var(--space-16);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.ui-tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.ui-tab[aria-selected="true"],
+.ui-tab[aria-current="page"] {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* -------------------------------------------------------------------------
+   Аккордеон (нативный <details>)
+   ------------------------------------------------------------------------- */
+
+.ui-accordion {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ui-accordion > summary {
+  display: flex;
+  gap: var(--space-12);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--control-height);
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+  list-style: none;
+  border-radius: inherit;
+}
+
+.ui-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-accordion > summary:hover {
+  background: var(--color-surface-raised);
+}
+
+.ui-accordion > summary::after {
+  content: "";
+  flex: none;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-right: 2px solid currentcolor;
+  border-bottom: 2px solid currentcolor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.ui-accordion[open] > summary::after {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.ui-accordion__body {
+  padding: 0 var(--space-16) var(--space-16);
+}
+
+/* -------------------------------------------------------------------------
+   Пагинация
+   ------------------------------------------------------------------------- */
+
+.ui-pagination {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-32);
+  min-height: var(--space-32);
+  padding: 0 var(--space-8);
+  color: var(--color-text);
+  font-size: var(--text-14);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.ui-page-link:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-hover);
+}
+
+.ui-page-link[aria-current="page"] {
+  color: var(--color-primary-contrast);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.ui-pagination__status {
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------
+   Бейджи
+   ------------------------------------------------------------------------- */
+
+.ui-badge {
+  display: inline-flex;
+  gap: var(--space-6);
+  align-items: center;
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid;
+  border-radius: var(--radius-full);
+}
+
+/* Точка перед подписью: статус читается формой и текстом, а не только
+   цветом — требование WCAG 1.4.1 и рекомендация NN/g. */
+.ui-badge::before {
+  content: "";
+  width: var(--space-6);
+  height: var(--space-6);
+  background: currentcolor;
+  border-radius: var(--radius-full);
+}
+
+.ui-badge--neutral {
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+.ui-badge--info {
+  color: var(--color-on-info-surface);
+  background: var(--color-info-surface);
+  border-color: var(--color-info-border);
+}
+
+.ui-badge--success {
+  color: var(--color-on-success-surface);
+  background: var(--color-success-surface);
+  border-color: var(--color-success-border);
+}
+
+.ui-badge--warning {
+  color: var(--color-on-warning-surface);
+  background: var(--color-warning-surface);
+  border-color: var(--color-warning-border);
+}
+
+.ui-badge--danger {
+  color: var(--color-on-danger-surface);
+  background: var(--color-danger-surface);
+  border-color: var(--color-danger-border);
+}
+
+/* Счётчик непрочитанного. Без точки, всегда с текстовой подписью для
+   скринридера в родительской ссылке. */
+.ui-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-20);
+  height: var(--space-20);
+  padding: 0 var(--space-6);
+  color: var(--color-primary-contrast);
+  font-size: var(--text-11);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  background: var(--color-danger);
+  border-radius: var(--radius-full);
+}
+
+/* -------------------------------------------------------------------------
+   Прогресс
+   ------------------------------------------------------------------------- */
+
+.ui-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.ui-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--text-13);
+}
+
+.ui-progress__value {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-progress__track {
+  height: var(--space-8);
+  overflow: hidden;
+  background: var(--color-track);
+  border-radius: var(--radius-full);
+}
+
+/* Единственное санкционированное использование атрибута style в проекте:
+   передача ДАННОГО (не оформления) из шаблона через кастомное свойство —
+   style="--progress: {{ enrollment.progress_percent }}%". Решение о том, как
+   это выглядит, остаётся здесь, в CSS; шаблон сообщает только число. */
+.ui-progress__bar {
+  width: var(--progress, 0%);
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: inherit;
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.ui-progress--success .ui-progress__bar {
+  background: var(--color-success);
+}
+
+/* Сегментированный прогресс: по одному сегменту на учебный блок. Отвечает
+   на вопрос «сколько осталось», на который одинокий процент не отвечает.
+   Сам контейнер получает role="img" и aria-label с текстовой сводкой. */
+.ui-progress-segments {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.ui-progress-segments__item {
+  flex: 1;
+  height: var(--space-6);
+  min-width: var(--space-4);
+  background: var(--color-track);
+  border-radius: var(--radius-full);
+}
+
+.ui-progress-segments__item.is-done {
+  background: var(--color-success);
+}
+
+.ui-progress-segments__item.is-current {
+  background: var(--color-primary);
+}
+
+/* -------------------------------------------------------------------------
+   Аватар
+   ------------------------------------------------------------------------- */
+
+.ui-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-40);
+  height: var(--space-40);
+  overflow: hidden;
+  color: var(--color-on-primary-surface);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  background: var(--color-primary-surface);
+  border-radius: var(--radius-full);
+}
+
+.ui-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ui-avatar--sm {
+  width: var(--space-32);
+  height: var(--space-32);
+  font-size: var(--text-12);
+}
+
+.ui-avatar--lg {
+  width: var(--space-64);
+  height: var(--space-64);
+  font-size: var(--text-20);
+}
+
+/* -------------------------------------------------------------------------
+   Пустое состояние
+   Всегда три части: что здесь будет, почему сейчас пусто, что сделать.
+   Пустое состояние без действия — недоделанное пустое состояние.
+   ------------------------------------------------------------------------- */
+
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-48) var(--space-24);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.ui-empty__title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-empty__text {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+/* Компактный вариант для пустой секции внутри страницы */
+.ui-empty--inline {
+  padding: var(--space-24) var(--space-16);
+}
+
+/* -------------------------------------------------------------------------
+   Скелетоны и спиннер
+
+   Скелетон применим только к области, которая подгружается отдельным
+   запросом (htmx-фрагмент). Полностраничных скелетонов в server-rendered
+   приложении быть не должно — страница приходит уже с данными.
+   ------------------------------------------------------------------------- */
+
+.ui-skeleton {
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  animation: ui-skeleton-pulse 1600ms var(--ease-in-out) infinite;
+}
+
+.ui-skeleton--text {
+  height: var(--text-16);
+}
+
+.ui-skeleton--title {
+  width: 60%;
+  height: var(--text-24);
+}
+
+.ui-skeleton--block {
+  height: var(--space-80);
+  border-radius: var(--radius-md);
+}
+
+@keyframes ui-skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton {
+    animation: none;
+  }
+}
+
+.ui-spinner {
+  display: inline-block;
+  width: var(--space-20);
+  height: var(--space-20);
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: ui-spin 600ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner {
+    animation-duration: 1600ms;
+  }
+}

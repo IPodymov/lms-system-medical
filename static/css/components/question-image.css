@@ -1,52 +1,45 @@
-.question-image-editor, .question-image-answer {
+/* =========================================================================
+   Редактор вопроса по изображению (страница создания теста)
+   -------------------------------------------------------------------------
+   Стили ответа на такой вопрос переехали в pages/quiz.css вместе с
+   миграцией страницы прохождения теста. Здесь остался только редактор;
+   он мигрирует на этапе 4.11 вместе с courses/quiz_create.html, после
+   чего файл уйдёт целиком.
+
+   Значения пока не переведены на токены намеренно: файл доживает до
+   своей миграции, и переписывать его дважды смысла нет.
+   ========================================================================= */
+
+.question-image-editor {
     position: relative;
     width: min(100%, 720px);
     margin: 14px 0;
 }
 
-.question-image-editor img, .question-image-answer>img {
+.question-image-editor img {
     display: block;
     width: 100%;
     height: auto;
     border: 1px solid var(--color-border);
 }
 
-#marker-layer, .question-answer-markers {
+#marker-layer {
     position: absolute;
     inset: 0;
 }
 
-.image-marker, .image-answer-marker {
+.image-marker {
     position: absolute;
     transform: translate(-50%, -50%);
-}
-
-.image-marker, .image-answer-marker span:not(.visually-hidden) {
     display: grid;
     place-items: center;
     width: 30px;
     height: 30px;
-    color: #fff;
+    color: var(--color-primary-contrast);
     background: var(--color-primary);
-    border: 2px solid #fff;
+    border: 2px solid var(--color-primary-contrast);
     border-radius: 50%;
     font-weight: 700;
-}
-
-.image-answer-marker {
-    cursor: pointer;
-}
-
-.image-answer-marker input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-}
-
-.image-answer-marker input:checked+span {
-    background: var(--color-success);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 28%, transparent);
 }
 
 #marker-controls {
@@ -57,16 +50,4 @@
 .field-hint {
     color: var(--color-text-muted);
     font-size: 14px;
-}
-
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
 }

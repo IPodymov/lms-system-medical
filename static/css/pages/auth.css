@@ -1,0 +1,75 @@
+/* =========================================================================
+   Страницы входа и регистрации
+   -------------------------------------------------------------------------
+   Подключается только этими двумя страницами через блок extra_css.
+   Задаёт раскладку; всё оформление внутри — компоненты слоя ui-.
+   ========================================================================= */
+
+.auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  /* Форма входа ощущается устойчивее чуть выше геометрического центра,
+     но на низком экране отступ схлопывается, чтобы кнопка осталась видна. */
+  padding-top: min(var(--space-48), 6vh);
+}
+
+.auth__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  text-align: center;
+}
+
+.auth__eyebrow {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.auth__title {
+  margin: 0;
+  font-size: var(--text-30);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.auth__subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--density-card-padding);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.auth__footer {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  text-align: center;
+}
+
+.auth__footer a {
+  color: var(--color-primary);
+  font-weight: var(--weight-medium);
+}
+
+.auth__footer a:hover {
+  text-decoration: underline;
+}

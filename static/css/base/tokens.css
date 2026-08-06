@@ -1,22 +1,370 @@
+/* =========================================================================
+   Дизайн-токены МедЛМС
+   -------------------------------------------------------------------------
+   Единственный источник значений для цвета, отступов, типографики, теней,
+   слоёв и анимаций. Хардкод цвета или размера в любом другом CSS-файле
+   считается ошибкой: значение должно либо стать токеном, либо использовать
+   существующий.
+
+   Контраст всех текстовых пар проверен на WCAG 2.2 AA (>= 4.5:1), пары для
+   фокуса и границ — на 1.4.11 Non-text Contrast (>= 3:1).
+   Спецификация и таблица замеров: docs/redesign/02-design-system.md
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   1. ПРИМИТИВЫ — не зависят от темы
+   ------------------------------------------------------------------------- */
+
 :root {
-  --color-text: #eef4ff;
-  --color-text-muted: #a2adbd;
-  --color-background: #0d1118;
-  --color-surface: #151b25;
-  --color-surface-raised: #1b2330;
-  --color-surface-soft: #111720;
-  --color-border: rgb(190 209 235 / 12%);
-  --color-border-strong: rgb(190 209 235 / 24%);
-  --color-primary: #4e8cff;
-  --color-primary-hover: #70a2ff;
-  --color-primary-contrast: #07101e;
-  --color-success: #55c987;
-  --color-warning: #dfae62;
-  --color-danger: #f18791;
-  --color-info-background: #16263d;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --content-width: 1180px;
-  --shadow-card: 0 18px 48px rgb(0 0 0 / 18%);
+  /* --- Отступы -----------------------------------------------------------
+     База 8px. Имя токена = значение в пикселях, поэтому шкала читается без
+     сверки с таблицей. Шаги 2/4/6 нужны бейджам и компактным элементам
+     управления, где 8px — уже слишком много. */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --space-80: 80px;
+
+  /* --- Типографика -------------------------------------------------------
+     В rem, чтобы уважать настройку размера шрифта в браузере. База 16px
+     (было 15px хардкодом): 16px — минимум, при котором мобильный Safari не
+     зумит поля ввода при фокусе. */
+  --font-sans: Inter, "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --text-11: 0.6875rem; /* 11px — счётчики, надстрочные метки */
+  --text-12: 0.75rem;   /* 12px — заголовки таблиц, микрокопия */
+  --text-13: 0.8125rem; /* 13px — вторичный текст, подписи */
+  --text-14: 0.875rem;  /* 14px — метки полей, плотный режим */
+  --text-16: 1rem;      /* 16px — основной текст */
+  --text-18: 1.125rem;  /* 18px — лид-абзац, h4 */
+  --text-20: 1.25rem;   /* 20px — h3 */
+  --text-24: 1.5rem;    /* 24px — h2 */
+  --text-30: 1.875rem;  /* 30px — h1 */
+  --text-38: 2.375rem;  /* 38px — крупный заголовок страницы */
+
+  --leading-tight: 1.2;   /* заголовки */
+  --leading-snug: 1.35;   /* подзаголовки, плотные списки */
+  --leading-normal: 1.55; /* основной текст */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.02em;  /* крупные заголовки */
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;    /* КАПС-метки, заголовки таблиц */
+
+  /* Максимальная длина строки основного текста. Применяется адресно к
+     текстовым блокам, а НЕ глобально ко всем <p> — иначе абзацы внутри
+     карточек и таблиц получают лишнее ограничение. */
+  --measure: 68ch;
+
+  /* --- Скругления --------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* --- Слои ---------------------------------------------------------------
+     Значение z-index вне этой шкалы — ошибка. Шаг 100 оставляет место для
+     промежуточных слоёв без пересчёта всей шкалы. */
+  --z-base: 0;
+  --z-raised: 100;      /* приподнятые карточки, sticky-заголовки таблиц */
+  --z-sticky: 200;      /* липкая шапка приложения */
+  --z-dropdown: 300;    /* меню навигации, профиль */
+  --z-overlay: 400;     /* затемнение под модалкой */
+  --z-modal: 500;       /* содержимое модалки */
+  --z-toast: 600;       /* всплывающие уведомления — всегда поверх всего */
+
+  /* --- Движение -----------------------------------------------------------
+     Быстро и по делу. Длительнее 250ms интерфейс начинает ощущаться вязким. */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* --- Раскладка ----------------------------------------------------------
+     Две ширины: обычная для читаемого контента и широкая для плотных
+     страниц (журнал, панель управления, состав группы). */
+  --content-width: 1200px;
+  --content-width-wide: 1600px;
+  --content-gutter: var(--space-24);
+
+  /* Высота липкой шапки. Используется и для отступа контента, и для
+     scroll-padding — иначе якорная ссылка и :focus уезжают под шапку
+     (WCAG 2.2 SC 2.4.11 Focus Not Obscured). */
+  --header-height: 60px;
+
+  /* --- Плотность ----------------------------------------------------------
+     Семантические псевдонимы отступов. Плотный режим переопределяет ТОЛЬКО
+     их, а не саму шкалу — поэтому одна система токенов обслуживает и
+     страницы студента, и рабочие экраны преподавателя.
+     Включается атрибутом data-density="compact" на любом контейнере. */
+  --density-card-padding: var(--space-24);
+  --density-stack: var(--space-16);   /* вертикальный шаг между блоками */
+  --density-row-y: var(--space-12);   /* вертикальный padding строки таблицы */
+  --density-section-gap: var(--space-32);
+  --control-height: 40px;
+  --control-height-sm: 32px;
+
+  /* --- Точки останова -----------------------------------------------------
+     Значения нельзя использовать внутри @media (CSS-переменные там не
+     работают), поэтому они зафиксированы здесь как единственный
+     разрешённый набор. Любое другое значение в @media — ошибка.
+
+       sm   480px   крупный телефон
+       md   768px   планшет / целевой размер из брифа
+       lg  1024px   узкий ноутбук
+       xl  1280px   целевой размер из брифа
+       2xl 1600px   широкий монитор (включает --content-width-wide)
+
+     Базовые стили пишутся для 360px, дальше — только min-width.
+     Прежний набор из 11 разных max-width заменён этими пятью. */
+}
+
+[data-density="compact"] {
+  --density-card-padding: var(--space-16);
+  --density-stack: var(--space-12);
+  --density-row-y: var(--space-8);
+  --density-section-gap: var(--space-24);
+  --control-height: 32px;
+  --control-height-sm: 26px;
+}
+
+/* -------------------------------------------------------------------------
+   2. ЦВЕТ — светлая тема (значение по умолчанию)
+
+   Тему выбирает система пользователя (prefers-color-scheme), а явный выбор
+   через переключатель (data-theme) всегда побеждает.
+   ------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* Поверхности, от дальней к ближней */
+  --color-background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-surface-raised: #eef1f6;
+  --color-surface-sunken: #e9edf3;
+  --color-surface-overlay: #ffffff;
+  --color-surface-overlay-hover: #eef1f6;
+  --color-backdrop: rgb(16 23 32 / 45%); /* затемнение под модалкой */
+  --color-backdrop-glow: #e8eefb;
+
+  /* Текст. -faint используется только для placeholder и отключённых
+     подписей: 4.55:1 — проходит AA, но запаса почти нет, темнее не делать. */
+  --color-text: #101720;
+  --color-text-muted: #556170;
+  --color-text-faint: #68727f;
+
+  /* Границы. -strong для полей ввода (нужен контраст 3:1 к фону),
+     -hover для наведения на интерактивные контейнеры. */
+  --color-border: #dde3ec;
+  --color-border-strong: #b9c3d1;
+  --color-border-hover: #93a1b3;
+
+  /* Основной акцент */
+  --color-primary: #1f5fd0;
+  --color-primary-hover: #1a4fae;
+  --color-primary-active: #16418f;
+  --color-primary-contrast: #ffffff;
+  --color-primary-surface: #e4edfd;
+  --color-on-primary-surface: #164aa8;
+  --color-primary-border: #b4cdf7;
+
+  /* Семантика. Каждый цвет — полный набор из четырёх токенов:
+     сплошной (текст и иконки на обычной поверхности), подложка,
+     текст на подложке, граница подложки. Без такого набора любая
+     цветная плашка требует угадывать цвет текста. */
+  --color-success: #0d7a45;
+  --color-success-surface: #dff3e7;
+  --color-on-success-surface: #0a5f36;
+  --color-success-border: #a9dcc1;
+
+  --color-warning: #8a5300;
+  --color-warning-surface: #fbeeda;
+  --color-on-warning-surface: #734500;
+  --color-warning-border: #e8c894;
+
+  --color-danger: #c02339;
+  --color-danger-surface: #fce8ea;
+  --color-on-danger-surface: #9c1c2e;
+  --color-danger-border: #f2b8c0;
+
+  --color-info: var(--color-primary);
+  --color-info-surface: var(--color-primary-surface);
+  --color-on-info-surface: var(--color-on-primary-surface);
+  --color-info-border: var(--color-primary-border);
+
+  /* Вспомогательное */
+  --color-focus-ring: #1f5fd0;
+  --color-track: #dfe4ec;       /* незаполненная часть прогресса */
+  --color-selection: #cfe0fb;
+
+  /* Тени. В светлой теме тень несёт иерархию, в тёмной почти не читается —
+     там ту же роль берёт на себя более светлая поверхность. */
+  --shadow-sm: 0 1px 2px rgb(16 23 32 / 6%);
+  --shadow-md: 0 2px 6px rgb(16 23 32 / 8%);
+  --shadow-lg: 0 10px 24px rgb(16 23 32 / 10%);
+  --shadow-overlay: 0 16px 48px rgb(16 23 32 / 18%);
+
+  /* --- Псевдонимы для существующего CSS ---------------------------------
+     Старый код (layouts/application.css и др.) ссылается на эти имена.
+     Они сохранены, чтобы Этап 2 не потребовал переписать 3800 строк разом.
+     По мере миграции страниц на Этапе 4 использования уходят, после чего
+     блок удаляется целиком. Новый код эти токены использовать не должен. */
+  --color-surface-soft: var(--color-surface-raised);
+  --color-accent-text: var(--color-on-primary-surface);
+  --color-accent-surface: var(--color-primary-surface);
+  --color-danger-strong: var(--color-on-danger-surface);
+  --color-badge: var(--color-danger);
+  --color-info-background: var(--color-info-surface);
+  --shadow-card: var(--shadow-md);
+}
+
+/* -------------------------------------------------------------------------
+   3. ЦВЕТ — тёмная тема
+
+   ВНИМАНИЕ: два блока ниже обязаны совпадать значение в значение.
+   Дублирование сознательное: вариант с light-dark() убирает повтор, но при
+   отсутствии поддержки страница остаётся полностью без цветов, а не с одной
+   некорректной границей. Для файла такого уровня надёжность важнее краткости.
+   ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-background: #0c1117;
+    --color-surface: #151b24;
+    --color-surface-raised: #1d2530;
+    --color-surface-sunken: #10161e;
+    --color-surface-overlay: #1d2530;
+    --color-surface-overlay-hover: #262f3c;
+    --color-backdrop: rgb(4 7 11 / 65%);
+    --color-backdrop-glow: #172438;
+
+    --color-text: #e9eff7;
+    --color-text-muted: #a0acbb;
+    --color-text-faint: #8b97a6;
+
+    --color-border: #262f3b;
+    --color-border-strong: #3a4655;
+    --color-border-hover: #566476;
+
+    --color-primary: #5b93ff;
+    --color-primary-hover: #7dabff;
+    --color-primary-active: #9ac0ff;
+    --color-primary-contrast: #06101f;
+    --color-primary-surface: #16274a;
+    --color-on-primary-surface: #a9c7ff;
+    --color-primary-border: #2b4a80;
+
+    --color-success: #4ec27e;
+    --color-success-surface: #12301f;
+    --color-on-success-surface: #7fd8a3;
+    --color-success-border: #245c3c;
+
+    --color-warning: #e0ab5e;
+    --color-warning-surface: #332510;
+    --color-on-warning-surface: #eec489;
+    --color-warning-border: #63491f;
+
+    --color-danger: #f2848f;
+    --color-danger-surface: #3a1a20;
+    --color-on-danger-surface: #f7a9b1;
+    --color-danger-border: #6d2f38;
+
+    --color-focus-ring: #7dabff;
+    --color-track: #2a3341;
+    --color-selection: #1e3a68;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 2px 6px rgb(0 0 0 / 34%);
+    --shadow-lg: 0 10px 24px rgb(0 0 0 / 40%);
+    --shadow-overlay: 0 16px 48px rgb(0 0 0 / 55%);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-background: #0c1117;
+  --color-surface: #151b24;
+  --color-surface-raised: #1d2530;
+  --color-surface-sunken: #10161e;
+  --color-surface-overlay: #1d2530;
+  --color-surface-overlay-hover: #262f3c;
+  --color-backdrop: rgb(4 7 11 / 65%);
+  --color-backdrop-glow: #172438;
+
+  --color-text: #e9eff7;
+  --color-text-muted: #a0acbb;
+  --color-text-faint: #8b97a6;
+
+  --color-border: #262f3b;
+  --color-border-strong: #3a4655;
+  --color-border-hover: #566476;
+
+  --color-primary: #5b93ff;
+  --color-primary-hover: #7dabff;
+  --color-primary-active: #9ac0ff;
+  --color-primary-contrast: #06101f;
+  --color-primary-surface: #16274a;
+  --color-on-primary-surface: #a9c7ff;
+  --color-primary-border: #2b4a80;
+
+  --color-success: #4ec27e;
+  --color-success-surface: #12301f;
+  --color-on-success-surface: #7fd8a3;
+  --color-success-border: #245c3c;
+
+  --color-warning: #e0ab5e;
+  --color-warning-surface: #332510;
+  --color-on-warning-surface: #eec489;
+  --color-warning-border: #63491f;
+
+  --color-danger: #f2848f;
+  --color-danger-surface: #3a1a20;
+  --color-on-danger-surface: #f7a9b1;
+  --color-danger-border: #6d2f38;
+
+  --color-focus-ring: #7dabff;
+  --color-track: #2a3341;
+  --color-selection: #1e3a68;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 34%);
+  --shadow-lg: 0 10px 24px rgb(0 0 0 / 40%);
+  --shadow-overlay: 0 16px 48px rgb(0 0 0 / 55%);
+}
+
+/* -------------------------------------------------------------------------
+   4. Уважение к системным настройкам
+   ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
 }

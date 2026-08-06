@@ -1,10 +1,88 @@
 {% extends 'base.html' %}
-{% load learning_tags %}
+{% load static learning_tags %}
+
+{% block title %}{{ enrollment.course_run.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/learning.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<div class="section-heading"><h1>{{ enrollment.course_run.title }}</h1><a href="{% url 'course-chat' enrollment.course_run.id %}">Общий чат →</a></div>
-<section class="progress-card" aria-label="Прогресс по курсу"><div class="progress-heading"><strong>Ваш прогресс</strong><span>{{ enrollment.progress_percent }}%</span></div><div class="progress-track"><div class="progress-value" style="width: {{ enrollment.progress_percent }}%"></div></div><p>Отмечайте материалы по мере изучения; зачёт теста также обновляет прогресс.</p></section>
-<div class="learning-layout">
-  <aside class="course-outline"><h2>Программа</h2><ol>{% for block in blocks %}{% with progress=progresses|get_item:block.id %}<li class="{% if block == current_block %}is-current{% endif %}{% if progress and progress.status == 'completed' %} is-completed{% endif %}">{% if block.is_available %}<a href="?block={{ block.id }}">{% if progress and progress.status == 'completed' %}✓ {% endif %}{{ block.title }}</a>{% else %}<span>🔒 {{ block.title }}</span>{% endif %}<small>{{ block.lesson.title }}</small></li>{% endwith %}{% empty %}<li>Программа пока пуста.</li>{% endfor %}</ol></aside>
-  <section class="lesson-view card">{% if current_block %}<p class="eyebrow">{{ current_block.lesson.section.title }} · {{ current_block.lesson.title }}</p><h2>{{ current_block.title }}</h2>{% if current_block.file_content %}<p>{{ current_block.file_content.description }}</p><a class="button-link" href="{{ current_block.file_content.file.url }}" target="_blank">Открыть материал</a>{% elif current_block.text_content %}<div class="lecture-text">{{ current_block.text_content.body|linebreaks }}</div>{% elif current_block.quiz %}<p>Пройдите тест, чтобы закрепить тему и отметить этот шаг завершённым.</p><a class="button-link" href="{% url 'take-quiz' current_block.quiz.id %}">Перейти к тесту</a>{% endif %}{% with progress=progresses|get_item:current_block.id %}{% if progress and progress.status == 'completed' %}<p class="completion">Выполнено</p>{% elif not current_block.quiz %}<form method="post" action="{% url 'complete-block' current_block.id %}">{% csrf_token %}<button>Отметить выполненным</button></form>{% endif %}{% endwith %}<nav class="lesson-navigation">{% if previous_block %}<a href="?block={{ previous_block.id }}">← Предыдущий</a>{% endif %}{% if next_block %}<a href="?block={{ next_block.id }}">Следующий →</a>{% endif %}</nav>{% else %}<p>Материалы появятся после публикации курса.</p>{% endif %}</section>
+<div class="ui-stack">
+
+  <header class="section-head">
+    <div class="page-head">
+      <p class="page-head__eyebrow">{{ enrollment.course_run.course.title }}</p>
+      <h1 class="page-head__title">{{ enrollment.course_run.title }}</h1>
+    </div>
+    <a class="ui-btn ui-btn--secondary ui-btn--sm" href="{% url 'course-chat' enrollment.course_run.id %}">Общий чат →</a>
+  </header>
+
+  <section class="ui-card learning-progress" aria-label="Прогресс по курсу">
+    <div class="ui-progress">
+      <div class="ui-progress__head">
+        <strong>Ваш прогресс</strong>
+        <span class="ui-progress__value">{{ enrollment.progress_percent|floatformat:0 }}%</span>
+      </div>
+      <div class="ui-progress__track">
+        <div class="ui-progress__bar" style="--progress: {{ enrollment.progress_percent|floatformat:0 }}%"></div>
+      </div>
+    </div>
+    <p class="ui-hint">Отмечайте материалы по мере изучения; зачёт теста также обновляет прогресс.</p>
+  </section>
+
+  <div class="learning-layout">
+    {% course_outline blocks progresses current_block %}
+
+    <section class="ui-card lesson" aria-label="Учебный материал">
+      {% if current_block %}
+        <p class="lesson__breadcrumb">{{ current_block.lesson.section.title }} · {{ current_block.lesson.title }}</p>
+        <h2 class="lesson__title">{{ current_block.title }}</h2>
+
+        {% if current_block.file_content %}
+          <p class="ui-prose">{{ current_block.file_content.description }}</p>
+          <a class="ui-btn ui-btn--primary" href="{{ current_block.file_content.file.url }}" target="_blank" rel="noopener">Открыть материал</a>
+        {% elif current_block.text_content %}
+          <div class="ui-prose lesson__text">{{ current_block.text_content.body|linebreaks }}</div>
+        {% elif current_block.quiz %}
+          <p class="ui-prose">Пройдите тест, чтобы закрепить тему и отметить этот шаг завершённым.</p>
+          <a class="ui-btn ui-btn--primary" href="{% url 'take-quiz' current_block.quiz.id %}">Перейти к тесту</a>
+        {% endif %}
+
+        {% with progress=progresses|get_item:current_block.id %}
+          {% if progress and progress.status == 'completed' %}
+            <p class="lesson__done">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.4 3 3 6-6.8"/></svg>
+              Выполнено
+            </p>
+          {% elif not current_block.quiz %}
+            <form method="post" action="{% url 'complete-block' current_block.id %}">
+              {% csrf_token %}
+              <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Отметить выполненным</button>
+            </form>
+          {% endif %}
+        {% endwith %}
+
+        <nav class="lesson__nav" aria-label="Переход между блоками">
+          {% if previous_block %}
+            <a class="ui-btn ui-btn--secondary ui-btn--sm" href="?block={{ previous_block.id }}">← Предыдущий</a>
+          {% else %}<span></span>{% endif %}
+          {% if next_block %}
+            <a class="ui-btn ui-btn--secondary ui-btn--sm" href="?block={{ next_block.id }}">Следующий →</a>
+          {% endif %}
+        </nav>
+      {% else %}
+        <div class="ui-empty ui-empty--inline">
+          <h2 class="ui-empty__title">Материалы появятся после публикации курса</h2>
+          <p class="ui-empty__text">Преподаватель ещё наполняет программу. Загляните позже — учебные блоки появятся здесь.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/course_outline.js' %}{{ static_asset_version }}" defer></script>
 {% endblock %}

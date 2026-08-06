@@ -1,0 +1,22 @@
+{% comment %}
+  Сводка ошибок формы. Рендерится тегом {% form_errors form %}
+  из apps.ui.templatetags.form_tags.
+
+  Паттерн GOV.UK: блок стоит выше <h1>, несёт role="alert", каждый пункт —
+  ссылка на проблемное поле. tabindex="-1" позволяет перевести на него фокус
+  программно, чтобы пользователь клавиатуры сразу попал к описанию проблемы,
+  а не искал её по странице.
+
+  Текст пункта берётся из того же field.errors, что и сообщение у поля,
+  поэтому формулировки совпадают дословно по построению, а не по договорённости.
+{% endcomment %}
+{% if errors %}
+<div class="ui-error-summary" role="alert" tabindex="-1" data-error-summary>
+  <h2 class="ui-error-summary__title">{{ title }}</h2>
+  <ul class="ui-error-summary__list">
+    {% for error in errors %}
+    <li>{% if error.anchor %}<a href="#{{ error.anchor }}">{{ error.message }}</a>{% else %}{{ error.message }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}

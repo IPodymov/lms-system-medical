@@ -1,0 +1,35 @@
+{% comment %}
+  Одно сообщение django.contrib.messages.
+
+  Параметры: message — объект Message (приходит из цикла в base.html).
+
+  До этого этапа все сообщения рендерились как <p class="alert" role="status">,
+  из-за чего messages.error() был визуально неотличим от messages.success(),
+  а ошибка не объявлялась скринридером немедленно. Здесь уровень определяет
+  и внешний вид, и ARIA-роль.
+
+  role="alert" прерывает чтение и объявляет сообщение сразу — это оправдано
+  для ошибки и предупреждения, но навязчиво для успеха и информации,
+  которым достаточно role="status".
+{% endcomment %}
+{% if message.level_tag == 'error' %}
+  <div class="ui-alert ui-alert--danger" role="alert">
+    <svg class="ui-alert__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 13.5v.5" stroke-linecap="round"/></svg>
+    <div class="ui-alert__body">{{ message }}</div>
+  </div>
+{% elif message.level_tag == 'warning' %}
+  <div class="ui-alert ui-alert--warning" role="alert">
+    <svg class="ui-alert__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 3.5 2.5 16.5h15L10 3.5Z" stroke-linejoin="round"/><path d="M10 8.5v3.5M10 14.2v.3" stroke-linecap="round"/></svg>
+    <div class="ui-alert__body">{{ message }}</div>
+  </div>
+{% elif message.level_tag == 'success' %}
+  <div class="ui-alert ui-alert--success" role="status">
+    <svg class="ui-alert__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="m6.5 10.2 2.4 2.4 4.6-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="ui-alert__body">{{ message }}</div>
+  </div>
+{% else %}
+  <div class="ui-alert ui-alert--info" role="status">
+    <svg class="ui-alert__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 9.5v4.5M10 6.3v.3" stroke-linecap="round"/></svg>
+    <div class="ui-alert__body">{{ message }}</div>
+  </div>
+{% endif %}

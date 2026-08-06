@@ -1,0 +1,17 @@
+{% comment %}
+  Общая раскладка страницы ошибки.
+
+  Параметры:
+    error_title — заголовок (обязательный)
+    error_text  — пояснение (обязательное)
+    error_code  — код ответа для показа, например «404» (необязательный)
+
+  Вынесено в партиал, потому что четыре страницы ошибок отличаются только
+  двумя строками текста. Раньше каждая несла свою копию разметки.
+{% endcomment %}
+<div class="ui-empty">
+  {% if error_code %}<p class="ui-course-card__meta">Ошибка {{ error_code }}</p>{% endif %}
+  <h1 class="ui-empty__title">{{ error_title }}</h1>
+  <p class="ui-empty__text">{{ error_text }}</p>
+  <a class="ui-btn ui-btn--primary" href="{% url 'dashboard' %}">На главную</a>
+</div>

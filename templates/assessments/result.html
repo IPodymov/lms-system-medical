@@ -1,2 +1,42 @@
 {% extends 'base.html' %}
-{% block content %}<section class="card result"><h1>{% if attempt.passed %}Тест пройден{% else %}Тест не пройден{% endif %}</h1><p>Результат: {{ attempt.score }} из {{ attempt.max_score }}.</p><a class="button-link" href="{% url 'course-learning' enrollment.id %}?block={{ attempt.quiz.content_block.id }}">Продолжить курс</a></section>{% endblock %}
+{% load static %}
+
+{% block title %}{% if attempt.passed %}Тест пройден{% else %}Тест не пройден{% endif %} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/quiz.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block content %}
+{% comment %}
+  Итог различается иконкой, подписью и цветом одновременно. Одного цвета
+  недостаточно: «пройден» и «не пройден» — единственное, что здесь важно,
+  и оно не должно зависеть от цветовосприятия.
+{% endcomment %}
+<section class="ui-card quiz-result{% if attempt.passed %} is-passed{% else %} is-failed{% endif %}">
+
+  <div class="quiz-result__icon" aria-hidden="true">
+    {% if attempt.passed %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.4 3 3 6-6.8"/></svg>
+    {% else %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+    {% endif %}
+  </div>
+
+  <h1 class="quiz-result__title">{% if attempt.passed %}Тест пройден{% else %}Тест не пройден{% endif %}</h1>
+
+  <p class="quiz-result__score">Результат: {{ attempt.score|floatformat:0 }} из {{ attempt.max_score|floatformat:0 }}.</p>
+
+  {% if not attempt.passed %}
+    <p class="ui-empty__text">Вернитесь к материалам темы и попробуйте ещё раз — попытка не последняя.</p>
+  {% endif %}
+
+  <div class="ui-cluster quiz-result__actions">
+    <a class="ui-btn ui-btn--primary" href="{% url 'course-learning' enrollment.id %}?block={{ attempt.quiz.content_block.id }}">Продолжить курс</a>
+    {% if not attempt.passed %}
+      <a class="ui-btn ui-btn--secondary" href="{% url 'take-quiz' attempt.quiz.id %}">Пройти тест заново</a>
+    {% endif %}
+  </div>
+
+</section>
+{% endblock %}

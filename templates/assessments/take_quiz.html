@@ -1,2 +1,95 @@
 {% extends 'base.html' %}
-{% block content %}<h1>{{ quiz.title }}</h1><p>{{ quiz.description }}</p><form method="post" class="form-card">{% csrf_token %}{% for item in questions %}<fieldset><legend>{{ forloop.counter }}. {{ item.question.text }}</legend>{% if item.question.image %}<div class="question-image-answer"><img src="{{ item.question.image.url }}" alt="Изображение к вопросу"><div class="question-answer-markers">{% for option in item.question.options.all %}<label class="image-answer-marker" style="left: {{ option.marker_x }}%; top: {{ option.marker_y }}%;"><input type="{% if item.question.type == 'multiple_choice' %}checkbox{% else %}radio{% endif %}" name="question_{{ item.question.id }}" value="{{ option.id }}" {% if item.question.type != 'multiple_choice' %}required{% endif %}><span>{{ forloop.counter }}</span><span class="visually-hidden">Область {{ forloop.counter }}</span></label>{% endfor %}</div></div>{% else %}{% for option in item.question.options.all %}<label class="choice"><input type="{% if item.question.type == 'multiple_choice' %}checkbox{% else %}radio{% endif %}" name="question_{{ item.question.id }}" value="{{ option.id }}" {% if item.question.type != 'multiple_choice' %}required{% endif %}> {{ option.text }}</label>{% endfor %}{% endif %}</fieldset>{% endfor %}<button>Завершить тест</button></form>{% endblock %}
+{% load static l10n %}
+
+{% block title %}{{ quiz.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/quiz.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block content %}
+<div class="ui-stack quiz">
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">Тест</p>
+    <h1 class="page-head__title">{{ quiz.title }}</h1>
+    {% if quiz.description %}<p class="page-head__subtitle">{{ quiz.description }}</p>{% endif %}
+  </header>
+
+  <form class="quiz-form" method="post">
+    {% csrf_token %}
+
+    {% for item in questions %}
+      <fieldset class="quiz-question">
+        <legend class="quiz-question__legend">
+          <span class="quiz-question__number">Вопрос {{ forloop.counter }} из {{ questions|length }}</span>
+          <span class="quiz-question__text">{{ item.question.text }}</span>
+        </legend>
+
+        <div class="quiz-question__body">
+        {% if item.question.image %}
+          {% comment %}
+            Варианты ответа — области на изображении. Подписи внутри отметок
+            числовые, поэтому каждая отметка несёт текстовое пояснение для
+            скринридера: без него метка читается просто как «1».
+          {% endcomment %}
+          <div class="quiz-image">
+            <img src="{{ item.question.image.url }}" alt="Изображение к вопросу {{ forloop.counter }}">
+            <div class="quiz-image__markers">
+              {% comment %}
+                |unlocalize обязателен. LANGUAGE_CODE = "ru", поэтому Django
+                печатает Decimal с запятой: «25,0». CSS такое значение
+                отбрасывает целиком, и все отметки схлопываются в левый
+                верхний угол изображения. Прежний шаблон писал координату
+                в style="left: …" и страдал ровно тем же — то есть отметки
+                не позиционировались никогда, независимо от стилей.
+              {% endcomment %}
+              {% for option in item.question.options.all %}
+                <label class="quiz-marker" style="--marker-x: {{ option.marker_x|unlocalize }}%; --marker-y: {{ option.marker_y|unlocalize }}%">
+                  <input type="{% if item.question.type == 'multiple_choice' %}checkbox{% else %}radio{% endif %}"
+                         name="question_{{ item.question.id }}" value="{{ option.id }}"
+                         {% if item.question.type != 'multiple_choice' %}required{% endif %}>
+                  <span class="quiz-marker__dot" aria-hidden="true">{{ forloop.counter }}</span>
+                  <span class="ui-visually-hidden">Область {{ forloop.counter }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </div>
+          <p class="ui-hint">
+            {% if item.question.type == 'multiple_choice' %}Отметьте все подходящие области.{% else %}Отметьте одну область.{% endif %}
+          </p>
+        {% else %}
+          <div class="quiz-options">
+            {% for option in item.question.options.all %}
+              <label class="ui-check">
+                <input type="{% if item.question.type == 'multiple_choice' %}checkbox{% else %}radio{% endif %}"
+                       name="question_{{ item.question.id }}" value="{{ option.id }}"
+                       {% if item.question.type != 'multiple_choice' %}required{% endif %}>
+                <span>{{ option.text }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% if item.question.type == 'multiple_choice' %}
+            <p class="ui-hint">Правильных ответов может быть несколько.</p>
+          {% endif %}
+        {% endif %}
+        </div>
+      </fieldset>
+    {% empty %}
+      <div class="ui-empty">
+        <h2 class="ui-empty__title">В тесте пока нет вопросов</h2>
+        <p class="ui-empty__text">Преподаватель ещё наполняет тест. Вернитесь к курсу и загляните позже.</p>
+        <a class="ui-btn ui-btn--primary" href="{% url 'course-learning' enrollment.id %}">Вернуться к курсу</a>
+      </div>
+    {% endfor %}
+
+    {% if questions %}
+      <div class="quiz-form__actions">
+        <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Завершить тест</button>
+        <a class="ui-btn ui-btn--ghost" href="{% url 'course-learning' enrollment.id %}">Вернуться к курсу</a>
+      </div>
+    {% endif %}
+  </form>
+
+</div>
+{% endblock %}

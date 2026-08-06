@@ -1,1 +1,29 @@
-<p class="alert {{ level }}">{{ message }}</p>
+{% extends 'base.html' %}
+{% comment %}
+  Страница отказа при неудачной записи на курс (HTTP 400).
+
+  Параметры: message — текст ошибки, level — уровень («error»).
+
+  Раньше этот файл был фрагментом без {% extends %}, но возвращался
+  courses.views как полный ответ. Пользователь с истёкшей ссылкой-приглашением
+  получал белую страницу с одним абзацем: без шапки, без навигации, без CSS
+  (тега <head> не было вовсе) и без единого способа уйти, кроме кнопки
+  «назад» в браузере. Теперь это нормальная страница с выходами.
+
+  Имя файла и путь сохранены: courses.views ссылается на них, а менять
+  внутренности view на этом этапе не входит в задачу.
+{% endcomment %}
+
+{% block title %}Не удалось записаться на курс — МедЛМС{% endblock %}
+
+{% block content %}
+<div class="ui-empty">
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 15.6v.4" stroke-linecap="round"/></svg>
+  <h1 class="ui-empty__title">Не удалось записаться на курс</h1>
+  <p class="ui-empty__text">{{ message }}</p>
+  <div class="ui-cluster">
+    <a class="ui-btn ui-btn--primary" href="{% url 'course-catalog' %}">Открыть каталог</a>
+    <a class="ui-btn ui-btn--secondary" href="{% url 'my-courses' %}">Мои курсы</a>
+  </div>
+</div>
+{% endblock %}
