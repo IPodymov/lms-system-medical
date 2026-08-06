@@ -21,25 +21,6 @@
     font-size: 17px;
 }
 
-.section-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 14px;
-}
-
-.section-heading h2 {
-    margin: 0;
-    font-size: 20px;
-}
-
-.section-heading a {
-    color: var(--color-primary-hover);
-    font-size: 14px;
-    font-weight: 650;
-}
-
 .builder-header {
     display: flex;
     align-items: flex-end;
@@ -385,14 +366,6 @@
     transform: translateY(-1px);
 }
 
-.draft-courses .section-heading {
-    margin-bottom: 16px;
-}
-
-.draft-courses .section-heading h2 {
-    margin-top: 4px;
-}
-
 .eyebrow {
     margin: 0;
     color: var(--color-text-faint);
@@ -413,49 +386,6 @@
 
 .empty-state h2 {
     color: var(--color-text);
-}
-
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.metrics-grid article {
-    padding: 20px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-}
-
-.metrics-grid span {
-    display: block;
-    color: var(--color-text-muted);
-    font-size: 13px;
-}
-
-.metrics-grid strong {
-    display: block;
-    margin-top: 8px;
-    color: var(--color-primary-hover);
-    font-size: 28px;
-    letter-spacing: -.04em;
-}
-
-.inline-form {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr auto;
-    align-items: end;
-    gap: 12px;
-}
-
-.inline-form label {
-    margin: 0;
-}
-
-.inline-form button {
-    margin-bottom: 16px;
 }
 
 .management-grid {
@@ -485,145 +415,6 @@
     font-size: 12px;
 }
 
-.management-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 32px;
-}
-
-.management-header h1 {
-    margin: 5px 0 8px;
-    font-size: clamp(34px, 5vw, 48px);
-}
-
-.management-header p:not(.eyebrow) {
-    max-width: 680px;
-    margin: 0;
-    color: var(--color-text-muted);
-    line-height: 1.55;
-}
-
-.management-header .button-secondary {
-    display: inline-flex;
-    align-items: center;
-    min-height: 40px;
-    padding: 9px 14px;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.management-setup {
-    margin: 0 0 20px;
-}
-
-.management-layout {
-    display: grid;
-    grid-template-columns: 205px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-}
-
-.management-sidebar {
-    position: sticky;
-    top: 16px;
-    display: grid;
-    gap: 4px;
-    padding: 13px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-}
-
-.management-sidebar .eyebrow {
-    padding: 4px 8px 9px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.management-sidebar a {
-    padding: 9px 8px;
-    color: var(--color-text-muted);
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 650;
-}
-
-.management-sidebar a:hover {
-    color: var(--color-text);
-    background: var(--color-surface-raised);
-}
-
-.management-content {
-    display: grid;
-    gap: 40px;
-    min-width: 0;
-}
-
-.management-section {
-    scroll-margin-top: 18px;
-}
-
-.management-section > .section-heading {
-    margin-bottom: 16px;
-}
-
-.management-section h2 {
-    margin: 4px 0 0;
-    font-size: 24px;
-}
-
-.management-action-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.management-panel {
-    margin: 0;
-}
-
-.management-panel h3 {
-    margin: 0 0 7px;
-    font-size: 18px;
-}
-
-.management-panel > p:not(.eyebrow) {
-    margin: 0 0 16px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-.management-form {
-    display: grid;
-    gap: 11px;
-}
-
-.management-form label, .management-user-form label, .management-link-form label {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.management-form button, .management-user-form button, .management-link-form button {
-    margin-top: 4px;
-}
-
-.management-form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-
-.group-directory {
-    display: grid;
-    gap: 8px;
-    margin-top: 16px;
-}
-
 .group-row {
     display: flex;
     align-items: center;
@@ -641,20 +432,6 @@
     border-color: var(--color-border-strong);
 }
 
-.group-row-icon {
-    display: grid;
-    width: 32px;
-    height: 32px;
-    flex: 0 0 auto;
-    place-items: center;
-    color: var(--color-primary-hover);
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
-    border-radius: 50%;
-    font-size: 13px;
-    font-weight: 800;
-}
-
 .group-row strong, .group-row small {
     display: block;
 }
@@ -663,31 +440,6 @@
     margin-top: 3px;
     color: var(--color-text-muted);
     font-size: 12px;
-}
-
-.group-row-action {
-    margin-left: auto;
-    color: var(--color-primary-hover);
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.management-user-form {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    align-items: end;
-}
-
-.management-user-form button {
-    grid-column: span 2;
-}
-
-.management-link-form {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr auto;
-    gap: 12px;
-    align-items: end;
 }
 
 .link-list {
@@ -738,10 +490,6 @@
     margin-top: 24px;
 }
 
-.inline-form-users {
-    grid-template-columns: 1.3fr 1fr 1fr 1fr auto;
-}
-
 .admin-documentation-card {
     display: flex;
     align-items: center;
@@ -790,36 +538,6 @@
     margin: 20px 0;
 }
 
-.management-panel {
-    margin: 0;
-}
-
-.management-panel h2 {
-    margin: 5px 0 18px;
-    font-size: 20px;
-}
-
-.management-form {
-    display: grid;
-    gap: 10px;
-}
-
-.management-form label {
-    margin: 0;
-    font-size: 12px;
-}
-
-.management-form button {
-    margin-top: 4px;
-}
-
-.form-note {
-    margin: 16px 0 0;
-    color: var(--color-text-muted);
-    font-size: 12px;
-    line-height: 1.55;
-}
-
 .compact-list {
     display: grid;
     gap: 7px;
@@ -838,15 +556,6 @@
 
 .compact-list span, .compact-list p {
     color: var(--color-text-muted);
-}
-
-.management-inline-form {
-    grid-template-columns: minmax(200px, 1.5fr) minmax(180px, 1fr) minmax(130px, .7fr) auto;
-    margin-bottom: 18px;
-}
-
-.management-inline-form button {
-    margin-bottom: 0;
 }
 
 .enrollment-forms {
@@ -1314,16 +1023,16 @@
         margin-bottom: 26px;
     }
 
-    .learning-layout, .builder-layout, .editor-bottom-grid, .documentation-layout, .management-layout, .management-action-grid {
+    .learning-layout, .builder-layout, .editor-bottom-grid, .documentation-layout {
         grid-template-columns: 1fr;
     }
 
-    .builder-header, .admin-documentation-card, .management-header {
+    .builder-header, .admin-documentation-card {
         align-items: flex-start;
         flex-direction: column;
     }
 
-    .builder-sidebar, .documentation-nav, .management-sidebar {
+    .builder-sidebar, .documentation-nav {
         position: static;
     }
 
@@ -1347,25 +1056,8 @@
         padding: 20px;
     }
 
-    .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .inline-form, .management-inline-form, .management-user-form, .management-link-form {
-        grid-template-columns: 1fr;
-    }
-
-    .inline-form button, .management-user-form button {
-        margin-bottom: 0;
-        grid-column: auto;
-    }
-
     .group-row {
         align-items: flex-start;
-    }
-
-    .group-row-action {
-        margin-left: 0;
     }
 }
 
@@ -1411,7 +1103,7 @@ form {
     overflow: hidden;
 }
 
-.builder-header, .builder-layout, .editor-bottom-grid, .builder-section-heading, .topic-card header, .block-forms, .course-create-layout, .learning-layout, .management-layout, .documentation-layout {
+.builder-header, .builder-layout, .editor-bottom-grid, .builder-section-heading, .topic-card header, .block-forms, .course-create-layout, .learning-layout, .documentation-layout {
     min-width: 0;
 }
 
@@ -1511,7 +1203,7 @@ fieldset {
     min-width: 0;
 }
 
-.course-cards, .metrics-grid, .grid, .management-action-grid, .management-workspace, .documentation-cards {
+.course-cards, .grid, .management-workspace, .documentation-cards {
     min-width: 0;
 }
 
@@ -1538,10 +1230,6 @@ table {
     .documentation-layout {
         grid-template-columns: 190px minmax(0, 1fr);
     }
-
-    .management-layout {
-        grid-template-columns: 180px minmax(0, 1fr);
-    }
 }
 
 @media (max-width: 900px) {
@@ -1559,34 +1247,16 @@ table {
     .builder-sidebar {
         position: static;
     }
-
-    .inline-form, .management-inline-form, .management-user-form, .management-link-form {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 @media (max-width: 767px) {
 
-    .page-header, .catalog-heading, .builder-header, .management-header {
+    .page-header, .catalog-heading, .builder-header {
         margin-bottom: 22px;
     }
 
-    .page-header h1, .catalog-heading h1, .builder-header h1, .management-header h1 {
+    .page-header h1, .catalog-heading h1, .builder-header h1 {
         font-size: clamp(28px, 9vw, 40px);
-    }
-
-    .section-heading, .management-header {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .section-heading {
-        gap: 10px;
-    }
-
-    .section-heading a, .section-heading .button-secondary {
-        align-self: stretch;
-        text-align: center;
     }
 
     .builder-section
@@ -1597,18 +1267,6 @@ table {
 
     .course-cards, .management-workspace, .documentation-cards {
         grid-template-columns: 1fr;
-    }
-
-    .metrics-grid {
-        gap: 10px;
-    }
-
-    .metrics-grid article {
-        padding: 14px;
-    }
-
-    .metrics-grid strong {
-        font-size: 23px;
     }
 
     .admin-documentation-card {
@@ -1644,7 +1302,7 @@ table {
         width: 100%;
     }
 
-    .topic-create-form, .block-forms, .inline-form, .management-inline-form, .management-user-form, .management-link-form {
+    .topic-create-form, .block-forms {
         grid-template-columns: 1fr;
     }
 
@@ -1675,7 +1333,7 @@ table {
         grid-column: 1 / -1;
     }
 
-    .course-date-fields, .metrics-grid {
+    .course-date-fields {
         grid-template-columns: 1fr;
     }
 
@@ -1688,23 +1346,6 @@ table {
 
     .builder-section, .draft-courses, .course-detail-content, .documentation-content, .form-card {
         padding: 14px;
-    }
-
-    .course-card-footer .button-link
-
-    .metrics-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .metrics-grid article {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    .metrics-grid strong {
-        margin-top: 0;
     }
 
     fieldset {
@@ -1732,7 +1373,7 @@ table {
 
 @media (max-width: 359px) {
 
-    .page-header h1, .catalog-heading h1, .builder-header h1, .management-header h1 {
+    .page-header h1, .catalog-heading h1, .builder-header h1 {
         font-size: 28px;
     }
 

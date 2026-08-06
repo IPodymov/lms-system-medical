@@ -1,63 +1,323 @@
 {% extends 'base.html' %}
-{% block title %}Управление | МедЛМС{% endblock %}
+{% load static %}
+
+{% block title %}Управление — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/management.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block main_attrs %} data-width="wide" data-density="compact"{% endblock %}
+
 {% block content %}
-<section class="management-header">
-  <div>
-    <p class="eyebrow">Управление обучением</p>
-    <h1>Учебный контур</h1>
-    <p>Сначала сформируйте группу, затем управляйте составом и записывайте слушателей на потоки.</p>
+<div class="ui-stack">
+
+  <div class="section-head">
+    <header class="page-head">
+      <p class="page-head__eyebrow">Управление обучением</p>
+      <h1 class="page-head__title">Учебный контур</h1>
+      <p class="page-head__subtitle">Сначала сформируйте группу, затем управляйте составом и записывайте слушателей на потоки.</p>
+    </header>
+    {% if admin_documentation_url %}<a class="ui-btn ui-btn--secondary" href="{{ admin_documentation_url }}">Документация</a>{% endif %}
   </div>
-  {% if admin_documentation_url %}<a class="button-secondary" href="{{ admin_documentation_url }}">Документация</a>{% endif %}
-</section>
 
-<section class="metrics-grid" aria-label="Показатели"><article><span>Пользователи</span><strong>{{ metrics.users }}</strong></article><article><span>Слушатели</span><strong>{{ metrics.students }}</strong></article><article><span>Средний прогресс</span><strong>{{ metrics.average_progress|floatformat:0 }}%</strong></article><article><span>Завершили</span><strong>{{ metrics.completed }}</strong></article></section>
+  {% comment %}
+    Плиток было четыре. «Средний прогресс по организации» удалён: из среднего
+    по всем записям не следует ни одного действия, а место на экране он
+    занимал наравне с остальными. Это антипаттерн А7 из 01-references.md.
+    Оставшиеся три отвечают на вопрос «какого размера контур» — и других
+    источников этого ответа в интерфейсе нет.
+  {% endcomment %}
+  <div class="stat-row" aria-label="Показатели">
+    <article class="ui-card stat">
+      <span class="stat__label">Пользователи</span>
+      <strong class="stat__value">{{ metrics.users }}</strong>
+    </article>
+    <article class="ui-card stat">
+      <span class="stat__label">Слушатели</span>
+      <strong class="stat__value">{{ metrics.students }}</strong>
+    </article>
+    <article class="ui-card stat">
+      <span class="stat__label">Завершили</span>
+      <strong class="stat__value">{{ metrics.completed }}</strong>
+    </article>
+  </div>
 
-{% if can_create_organizations %}
-<section class="card management-setup"><div class="section-heading"><div><p class="eyebrow">Первый шаг</p><h2>Организация</h2></div></div><form class="inline-form inline-form-users" method="post" action="{% url 'add-organization' %}">{% csrf_token %}<label>Полное название<input name="name" required maxlength="255" placeholder="Медицинский колледж"></label><label>Сокращение<input name="short_name" required maxlength="80" placeholder="МК"></label><label>Тип<select name="institution_type" required>{% for value, label in institution_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label><button>Создать организацию</button></form></section>
-{% endif %}
-
-{% if can_manage_users %}
-<section class="management-layout" aria-label="Управление колледжем">
-  <aside class="management-sidebar">
-    <p class="eyebrow">Рабочий порядок</p>
-    <a href="#groups">1. Учебные группы</a>
-    <a href="#people">2. Пользователи</a>
-    <a href="#courses">3. Потоки и запись</a>
-    <a href="#links">4. Ссылки приглашений</a>
-  </aside>
-  <div class="management-content">
-    <section id="groups" class="management-section">
-      <div class="section-heading"><div><p class="eyebrow">Учебные группы</p><h2>Состав и импорт</h2></div></div>
-      <div class="management-action-grid">
-        <article class="card management-panel"><h3>Создать группу</h3><p>Добавьте группу вручную, затем откройте её состав.</p><form class="management-form" method="post" action="{% url 'add-study-group' %}">{% csrf_token %}<label>Организация<select name="organization_id" required>{% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}</select></label><label>Номер группы<input name="name" required placeholder="СД-21"></label><div class="management-form-row"><label>Поступление<input name="admission_year" type="number" min="2000" value="2026" required></label><label>Выпуск<input name="graduation_year" type="number" min="2001" value="2030" required></label></div><button>Создать группу</button></form></article>
-        <article class="card management-panel"><h3>Импорт из Excel</h3><p>Загрузите список с ФИО и номером группы. Логин и временный пароль будут созданы автоматически и выданы отдельным файлом.</p><form class="management-form" method="post" enctype="multipart/form-data" action="{% url 'import-students' %}">{% csrf_token %}<label>Организация<select name="organization_id" required>{% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}</select></label><label>Excel-файл<input name="spreadsheet" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></label><button>Импортировать</button></form><p class="form-note">Обязательные колонки: <code>group</code> и <code>full_name</code>. Вместо <code>full_name</code> подойдут <code>first_name</code>, <code>last_name</code>. Необязательные: <code>student_number</code>, <code>admission_year</code>, <code>graduation_year</code>, <code>email</code>, <code>password</code>.</p></article>
+  {% if can_create_organizations %}
+  <section class="ui-card ui-stack" aria-labelledby="organization-title">
+    <div>
+      <p class="page-head__eyebrow">Первый шаг</p>
+      <h2 class="section-head__title" id="organization-title">Организация</h2>
+    </div>
+    <form class="mgmt-form" method="post" action="{% url 'add-organization' %}">
+      {% csrf_token %}
+      <div class="ui-field">
+        <label class="ui-label" for="org-name">Полное название</label>
+        <input class="ui-input" id="org-name" name="name" required maxlength="255" placeholder="Медицинский колледж">
       </div>
-      <div class="group-directory">
-        {% for group in study_groups %}<a class="group-row" href="{% url 'study-group-detail' group.id %}"><span class="group-row-icon" aria-hidden="true">Г</span><span><strong>{{ group.name }}</strong><small>{{ group.department.faculty.organization.short_name }} · {{ group.admission_year }}–{{ group.graduation_year }}</small></span><span class="group-row-action">Открыть состав</span></a>{% empty %}<div class="empty-state"><h2>Групп пока нет</h2><p>Создайте группу вручную или загрузите Excel-файл со студентами.</p></div>{% endfor %}
+      <div class="ui-field">
+        <label class="ui-label" for="org-short-name">Сокращение</label>
+        <input class="ui-input" id="org-short-name" name="short_name" required maxlength="80" placeholder="МК">
+      </div>
+      <div class="ui-field">
+        <label class="ui-label" for="org-type">Тип</label>
+        <select class="ui-select" id="org-type" name="institution_type" required>
+          {% for value, label in institution_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать организацию</button>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if can_manage_users %}
+  {% comment %}
+    Четыре раздела были якорями в липком сайдбаре и показывались все разом:
+    «рабочий порядок» существовал в тексте, но не в интерфейсе. Теперь это
+    вкладки. Без JS вкладки остаются обычными ссылками-якорями, а все
+    разделы — на странице: поведение ровно такое, каким было.
+  {% endcomment %}
+  <div class="mgmt-tabs" data-tabs="management">
+    <nav class="ui-tabs" aria-label="Разделы управления">
+      <a class="ui-tab" href="#groups">1. Учебные группы</a>
+      <a class="ui-tab" href="#people">2. Пользователи</a>
+      <a class="ui-tab" href="#courses">3. Потоки и запись</a>
+      <a class="ui-tab" href="#links">4. Ссылки приглашений</a>
+    </nav>
+
+    <section class="ui-stack mgmt-panel" id="groups" aria-labelledby="groups-title">
+      <div>
+        <p class="page-head__eyebrow">Учебные группы</p>
+        <h2 class="section-head__title" id="groups-title">Состав и импорт</h2>
+      </div>
+
+      <div class="mgmt-grid">
+        <article class="ui-card ui-stack">
+          <div>
+            <h3 class="mgmt-card__title">Создать группу</h3>
+            <p class="mgmt-card__text">Добавьте группу вручную, затем откройте её состав.</p>
+          </div>
+          <form class="mgmt-form" method="post" action="{% url 'add-study-group' %}">
+            {% csrf_token %}
+            <div class="ui-field">
+              <label class="ui-label" for="group-organization">Организация</label>
+              <select class="ui-select" id="group-organization" name="organization_id" data-organization-select required>
+                {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="group-name">Номер группы</label>
+              <input class="ui-input" id="group-name" name="name" required placeholder="СД-21">
+            </div>
+            <div class="mgmt-form__row">
+              <div class="ui-field">
+                <label class="ui-label" for="group-admission">Поступление</label>
+                <input class="ui-input" id="group-admission" name="admission_year" type="number" min="2000" value="2026" required>
+              </div>
+              <div class="ui-field">
+                <label class="ui-label" for="group-graduation">Выпуск</label>
+                <input class="ui-input" id="group-graduation" name="graduation_year" type="number" min="2001" value="2030" required>
+              </div>
+            </div>
+            <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать группу</button>
+          </form>
+        </article>
+
+        <article class="ui-card ui-stack">
+          <div>
+            <h3 class="mgmt-card__title">Импорт из Excel</h3>
+            <p class="mgmt-card__text">Загрузите список с ФИО и номером группы. Логин и временный пароль будут созданы автоматически и выданы отдельным файлом.</p>
+          </div>
+          <form class="mgmt-form" method="post" enctype="multipart/form-data" action="{% url 'import-students' %}">
+            {% csrf_token %}
+            <div class="ui-field">
+              <label class="ui-label" for="import-organization">Организация</label>
+              <select class="ui-select" id="import-organization" name="organization_id" data-organization-select required>
+                {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="import-file">Excel-файл</label>
+              <input class="ui-input" id="import-file" name="spreadsheet" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+            </div>
+            <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Импортировать</button>
+          </form>
+          <p class="mgmt-card__note">Обязательные колонки: <code>group</code> и <code>full_name</code>. Вместо <code>full_name</code> подойдут <code>first_name</code>, <code>last_name</code>. Необязательные: <code>student_number</code>, <code>admission_year</code>, <code>graduation_year</code>, <code>email</code>, <code>password</code>.</p>
+        </article>
+      </div>
+
+      {% if study_groups %}
+        <div class="ui-stack">
+          {% for group in study_groups %}
+            <a class="ui-card ui-card--interactive group-row" href="{% url 'study-group-detail' group.id %}">
+              <span class="ui-avatar ui-avatar--sm" aria-hidden="true">Г</span>
+              <span class="group-row__text">
+                <strong>{{ group.name }}</strong>
+                <small>{{ group.department.faculty.organization.short_name }} · {{ group.admission_year }}–{{ group.graduation_year }}</small>
+              </span>
+              <span class="group-row__action">Открыть состав</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="ui-empty ui-empty--inline">
+          <h3 class="ui-empty__title">Групп пока нет</h3>
+          <p class="ui-empty__text">Создайте группу вручную или загрузите Excel-файл со студентами.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="ui-stack mgmt-panel" id="people" aria-labelledby="people-title">
+      <div>
+        <p class="page-head__eyebrow">Пользователи</p>
+        <h2 class="section-head__title" id="people-title">Отдельное создание учётной записи</h2>
+      </div>
+      <article class="ui-card">
+        <form class="mgmt-form mgmt-form--two-column" method="post" action="{% url 'add-user' %}">
+          {% csrf_token %}
+          <div class="ui-field">
+            <label class="ui-label" for="user-organization">Организация</label>
+            <select class="ui-select" id="user-organization" name="organization_id" data-organization-select required>
+              {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-role">Роль</label>
+            <select class="ui-select" id="user-role" name="role">
+              {% for value, label in roles %}<option value="{{ value }}" {% if value == 'student' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-last-name">Фамилия</label>
+            <input class="ui-input" id="user-last-name" name="last_name" autocomplete="family-name">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-first-name">Имя</label>
+            <input class="ui-input" id="user-first-name" name="first_name" autocomplete="given-name">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-middle-name">Отчество</label>
+            <input class="ui-input" id="user-middle-name" name="middle_name" autocomplete="additional-name">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-username">Логин</label>
+            <input class="ui-input" id="user-username" name="username" required autocomplete="username">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-email">Email</label>
+            <input class="ui-input" id="user-email" name="email" type="email" required autocomplete="email">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="user-password">Временный пароль</label>
+            <input class="ui-input" id="user-password" name="password" type="password" autocomplete="new-password" required>
+          </div>
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать пользователя</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="ui-stack mgmt-panel" id="courses" aria-labelledby="courses-title">
+      <div>
+        <p class="page-head__eyebrow">Потоки</p>
+        <h2 class="section-head__title" id="courses-title">Команда и запись</h2>
+      </div>
+      <div class="mgmt-grid">
+        <article class="ui-card ui-stack">
+          <h3 class="mgmt-card__title">Назначить сотрудника</h3>
+          <form class="mgmt-form" method="post" action="{% url 'assign-course-staff' %}">
+            {% csrf_token %}
+            <div class="ui-field">
+              <label class="ui-label" for="staff-run">Поток</label>
+              <select class="ui-select" id="staff-run" name="course_run_id" required>
+                {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="staff-teacher">Преподаватель</label>
+              <select class="ui-select" id="staff-teacher" name="user_id" required>
+                {% for teacher in teachers %}<option value="{{ teacher.user.id }}">{{ teacher.user.get_full_name|default:teacher.user.email }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="staff-role">Роль</label>
+              <select class="ui-select" id="staff-role" name="role">
+                <option value="curator">Куратор</option>
+                <option value="teacher">Преподаватель</option>
+                <option value="assistant">Ассистент</option>
+              </select>
+            </div>
+            <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Назначить</button>
+          </form>
+        </article>
+
+        <article class="ui-card ui-stack">
+          <div>
+            <h3 class="mgmt-card__title">Записать на поток</h3>
+            <p class="mgmt-card__text">Для записи всей группы откройте её состав: там поток уже выбран в контексте группы.</p>
+          </div>
+          <form class="mgmt-form" method="post" action="{% url 'manage-course-enrollment' %}">
+            {% csrf_token %}
+            <input name="action" value="add_student" type="hidden">
+            <div class="ui-field">
+              <label class="ui-label" for="enroll-run">Поток</label>
+              <select class="ui-select" id="enroll-run" name="course_run_id" required>
+                {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="ui-field">
+              <label class="ui-label" for="enroll-student">Студент</label>
+              <select class="ui-select" id="enroll-student" name="user_id" required>
+                {% for student in students %}<option value="{{ student.user.id }}">{{ student.user.get_full_name|default:student.user.email }}</option>{% endfor %}
+              </select>
+            </div>
+            <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Записать студента</button>
+          </form>
+        </article>
       </div>
     </section>
 
-    <section id="people" class="management-section">
-      <div class="section-heading"><div><p class="eyebrow">Пользователи</p><h2>Отдельное создание учётной записи</h2></div></div>
-      <article class="card management-panel"><form class="management-user-form" method="post" action="{% url 'add-user' %}">{% csrf_token %}<label>Организация<select name="organization_id" required>{% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}</select></label><label>Роль<select name="role">{% for value, label in roles %}<option value="{{ value }}" {% if value == 'student' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label>Фамилия<input name="last_name"></label><label>Имя<input name="first_name"></label><label>Отчество<input name="middle_name"></label><label>Логин<input name="username" required autocomplete="username"></label><label>Email<input name="email" type="email" required></label><label>Временный пароль<input name="password" type="password" autocomplete="new-password" required></label><button>Создать пользователя</button></form></article>
-    </section>
-
-    <section id="courses" class="management-section">
-      <div class="section-heading"><div><p class="eyebrow">Потоки</p><h2>Команда и запись</h2></div></div>
-      <div class="management-action-grid">
-        <article class="card management-panel"><h3>Назначить сотрудника</h3><form class="management-form" method="post" action="{% url 'assign-course-staff' %}">{% csrf_token %}<label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Преподаватель<select name="user_id" required>{% for teacher in teachers %}<option value="{{ teacher.user.id }}">{{ teacher.user.get_full_name|default:teacher.user.email }}</option>{% endfor %}</select></label><label>Роль<select name="role"><option value="curator">Куратор</option><option value="teacher">Преподаватель</option><option value="assistant">Ассистент</option></select></label><button>Назначить</button></form></article>
-        <article class="card management-panel"><h3>Записать на поток</h3><p>Для записи всей группы откройте её состав: там поток уже выбран в контексте группы.</p><form class="management-form" method="post" action="{% url 'manage-course-enrollment' %}">{% csrf_token %}<input name="action" value="add_student" type="hidden"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Студент<select name="user_id" required>{% for student in students %}<option value="{{ student.user.id }}">{{ student.user.get_full_name|default:student.user.email }}</option>{% endfor %}</select></label><button>Записать студента</button></form></article>
+    <section class="ui-stack mgmt-panel" id="links" aria-labelledby="links-title">
+      <div>
+        <p class="page-head__eyebrow">Приглашения</p>
+        <h2 class="section-head__title" id="links-title">Ссылки для записи на курс</h2>
       </div>
-    </section>
+      <article class="ui-card">
+        <form class="mgmt-form" method="post" action="{% url 'create-course-enrollment-link' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'admin-dashboard' %}">
+          <div class="ui-field">
+            <label class="ui-label" for="new-link-run">Поток</label>
+            <select class="ui-select" id="new-link-run" name="course_run_id" required>
+              {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="new-link-label">Название для команды</label>
+            <input class="ui-input" id="new-link-label" name="label" placeholder="Осенний набор">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="new-link-expires">Действует до</label>
+            <input class="ui-input" id="new-link-expires" name="expires_at" type="datetime-local">
+          </div>
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать ссылку</button>
+        </form>
+      </article>
 
-    <section id="links" class="management-section">
-      <div class="section-heading"><div><p class="eyebrow">Приглашения</p><h2>Ссылки для записи на курс</h2></div></div>
-      <article class="card management-panel"><form class="management-link-form" method="post" action="{% url 'create-course-enrollment-link' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'admin-dashboard' %}"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Название для команды<input name="label" placeholder="Осенний набор"></label><label>Действует до<input name="expires_at" type="datetime-local"></label><button>Создать ссылку</button></form></article>
-      {% url 'admin-dashboard' as enrollment_links_next_url %}{% include 'components/enrollment_links.html' with enrollment_links_empty_message="Ссылок для записи ещё нет." enrollment_links_page_anchor="#links" %}
+      {% url 'admin-dashboard' as enrollment_links_next_url %}
+      {% include 'components/enrollment_links.html' with enrollment_links_empty_message="Ссылок для записи ещё нет." enrollment_links_page_anchor="#links" %}
     </section>
   </div>
-</section>
-{% else %}
-<section class="card management-panel"><h2>Доступ только для администраторов</h2><p>Здесь отображается учебная активность назначенных потоков.</p></section>
-{% endif %}
+  {% else %}
+  <div class="ui-empty">
+    <h2 class="ui-empty__title">Доступ только для администраторов</h2>
+    <p class="ui-empty__text">Здесь отображается учебная активность назначенных потоков.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/tabs.js' %}{{ static_asset_version }}" defer></script>
+  <script src="{% static 'js/management.js' %}{{ static_asset_version }}" defer></script>
 {% endblock %}
