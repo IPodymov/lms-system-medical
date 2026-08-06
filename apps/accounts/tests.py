@@ -6,7 +6,13 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
-from apps.courses.models import Course, CourseEnrollmentLink, CourseRun, CourseRunStaff
+from apps.courses.models import (
+    ContentBlock,
+    Course,
+    CourseEnrollmentLink,
+    CourseRun,
+    CourseRunStaff,
+)
 from apps.learning.models import Enrollment
 from apps.organizations.models import (
     Department,
@@ -16,6 +22,7 @@ from apps.organizations.models import (
     StudyGroup,
     StudyGroupMember,
 )
+from apps.test_helpers import CourseFixture
 
 from .models import User
 
@@ -326,3 +333,47 @@ class CollegeManagementTests(TestCase):
         self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())
         detail = self.client.get(reverse("study-group-detail", args=[group.pk]))
         self.assertContains(detail, student.email)
+
+
+class ProfilePageTests(TestCase):
+    """Страница профиля: счётчики в истории и видимость ошибок форм."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.fixture = CourseFixture.create(email="profile@test.local")
+        ContentBlock.objects.create(
+            lesson=cls.fixture["lesson"], title="Материал", position=1, type="text"
+        )
+        cls.other = User.objects.create_user("occupied@test.local", "pass")
+
+    def test_history_carries_block_counts_for_the_shared_card(self):
+        self.client.force_login(self.fixture["user"])
+
+        response = self.client.get(reverse("profile"))
+
+        enrollment = response.context["history"][0]
+        self.assertEqual(enrollment.blocks_total, 1)
+        self.assertEqual(enrollment.blocks_done, 0)
+        self.assertContains(response, "Пройдено 0 из 1")
+
+    def test_duplicate_email_is_reported_in_summary_and_at_the_field(self):
+        self.client.force_login(self.fixture["user"])
+
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "action": "profile",
+                "first_name": "Имя",
+                "last_name": "Фамилия",
+                "middle_name": "",
+                "username": "profile-user",
+                "email": self.other.email,
+            },
+        )
+
+        # Дважды: сводка выше <h1> и сообщение у самого поля. Тексты обязаны
+        # совпадать дословно, иначе пользователь их не свяжет.
+        self.assertContains(response, "Этот email уже используется.", count=2)
+        self.assertContains(response, "Проверьте личные данные")
+        self.fixture["user"].refresh_from_db()
+        self.assertEqual(self.fixture["user"].email, "profile@test.local")

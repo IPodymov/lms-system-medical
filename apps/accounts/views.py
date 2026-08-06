@@ -116,7 +116,11 @@ def profile(request):
     else:
         profile_form = ProfileForm(instance=request.user)
         password_form = UserPasswordForm(request.user)
-    history = request.user.enrollments.select_related("course_run__course").order_by("-updated_at")
+    # Счётчики блоков нужны общей карточке записи: без них она показывает
+    # «Материалы готовятся» вместо «Пройдено 7 из 16».
+    history = with_block_counts(
+        request.user.enrollments.select_related("course_run__course")
+    ).order_by("-updated_at")
     return render(
         request,
         "accounts/profile.html",
