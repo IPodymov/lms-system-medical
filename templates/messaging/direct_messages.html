@@ -1,41 +1,112 @@
 {% extends 'base.html' %}
-{% block title %}Личные сообщения | МедЛМС{% endblock %}
+{% load static form_tags %}
+
+{% block title %}Личные сообщения — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/messaging.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="page-header"><p class="eyebrow">Общение</p><h1>Личные сообщения</h1><p>Обсуждайте обучение напрямую с коллегами и преподавателями.</p></section>
-<div class="messenger-layout">
-  <aside class="contacts-card">
-    <h2>Сообщения</h2>
-    <p class="contacts-hint">Ищите пользователя по ФИО, логину или email. Без поиска показаны избранные и начатые диалоги.</p>
-    <form class="contact-search" method="get">
-      <input name="q" value="{{ query }}" placeholder="ФИО, логин или email" aria-label="Поиск контакта по ФИО, логину или email">
-      <button aria-label="Найти контакт">Найти</button>
-    </form>
-    <nav>{% for contact in contacts %}
-      <a class="contact {% if recipient == contact %}is-active{% endif %}" href="{% url 'direct-message-thread' contact.id %}">
-        <span class="avatar avatar-small">{{ contact.get_full_name|default:contact.email|first|upper }}</span>
-        <span>{{ contact.get_full_name|default:contact.email }}<small>{% if contact.is_favorite %}★ Избранное · {% endif %}@{{ contact.username }}</small></span>
-      </a>
-    {% empty %}<div class="contacts-empty"><p>{% if query %}По вашему запросу контактов не найдено.{% else %}Здесь появятся избранные пользователи и начатые диалоги.{% endif %}</p></div>{% endfor %}</nav>
-  </aside>
-  <section class="chat-card">
-    {% if recipient %}
-      <header>
-        <div><p class="eyebrow">Диалог</p><h2>{{ recipient.get_full_name|default:recipient.email }}</h2></div>
-        <form method="post" action="{% url 'toggle-favorite-contact' recipient.id %}">{% csrf_token %}<button class="favorite-button" type="submit">{% if recipient_is_favorite %}★ В избранном{% else %}☆ В избранное{% endif %}</button></form>
-      </header>
-      <section class="recipient-summary" aria-label="Краткая информация о собеседнике">
-        <span class="avatar">{{ recipient.get_full_name|default:recipient.email|first|upper }}</span>
-        <div><strong>{{ recipient.get_full_name|default:recipient.email }}</strong><span>@{{ recipient.username }}</span></div>
-        <dl><div><dt>Email</dt><dd>{{ recipient.email }}</dd></div>{% if recipient_membership %}<div><dt>Организация</dt><dd>{{ recipient_membership.organization.short_name }}</dd></div><div><dt>Роль</dt><dd>{{ recipient_membership.get_role_display }}</dd></div>{% endif %}</dl>
-      </section>
-      <div class="message-list" data-chat-list>{% for message in thread %}
-        <article id="message-{{ message.id }}" class="chat-message {% if message.sender_id == user.id %}is-own{% endif %}"><strong>{{ message.sender.get_full_name|default:message.sender.email }}</strong>{% if message.body %}<p>{{ message.body|linebreaksbr }}</p>{% endif %}{% if message.attachment %}<a class="message-attachment" href="{{ message.attachment.url }}" target="_blank" rel="noopener">Скачать вложение</a>{% endif %}<time>{{ message.created_at|date:"d.m H:i" }}</time></article>
-      {% endfor %}</div>
-      <form class="chat-composer" method="post" enctype="multipart/form-data" data-chat-form data-websocket-path="/ws/messages/direct/{{ recipient.id }}/">{% csrf_token %}{{ form.client_token }}{{ form.body }}<label class="attachment-button" title="Прикрепить файл">Файл{{ form.attachment }}</label><button>Отправить</button></form>
-    {% else %}
-      <div class="empty-state"><h2>Выберите собеседника</h2><p>Введите ФИО, логин или email в поиске слева, затем откройте диалог.</p></div>
-    {% endif %}
-  </section>
+<div class="ui-stack">
+
+  {% form_errors form "Сообщение не отправлено" %}
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">Общение</p>
+    <h1 class="page-head__title">Личные сообщения</h1>
+    <p class="page-head__subtitle">Обсуждайте обучение напрямую с коллегами и преподавателями.</p>
+  </header>
+
+  <div class="messenger">
+
+    <aside class="ui-card messenger__contacts" aria-labelledby="contacts-title">
+      <h2 class="section-head__title" id="contacts-title">Сообщения</h2>
+      <p class="messenger__hint">Ищите пользователя по ФИО, логину или email. Без поиска показаны избранные и начатые диалоги.</p>
+
+      <form class="messenger__search" method="get" role="search">
+        <label class="ui-visually-hidden" for="contact-search">Поиск контакта по ФИО, логину или email</label>
+        <input class="ui-input" id="contact-search" type="search" name="q" value="{{ query }}" placeholder="ФИО, логин или email">
+        <button class="ui-btn ui-btn--secondary" type="submit" aria-label="Найти контакт">Найти</button>
+      </form>
+
+      <nav class="messenger__list" aria-label="Контакты">
+        {% for contact in contacts %}
+          <a class="messenger__contact{% if recipient == contact %} is-active{% endif %}"
+             href="{% url 'direct-message-thread' contact.id %}"
+             {% if recipient == contact %}aria-current="page"{% endif %}>
+            <span class="ui-avatar ui-avatar--sm">{{ contact.get_full_name|default:contact.email|first|upper }}</span>
+            <span class="messenger__contact-text">
+              <span class="messenger__contact-name">{{ contact.get_full_name|default:contact.email }}</span>
+              <small>{% if contact.is_favorite %}★ Избранное · {% endif %}@{{ contact.username }}</small>
+            </span>
+          </a>
+        {% empty %}
+          <p class="messenger__empty">{% if query %}По вашему запросу контактов не найдено.{% else %}Здесь появятся избранные пользователи и начатые диалоги.{% endif %}</p>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <section class="ui-card messenger__thread" aria-labelledby="thread-title">
+      {% if recipient %}
+        <div class="section-head">
+          <div>
+            <p class="page-head__eyebrow">Диалог</p>
+            <h2 class="section-head__title" id="thread-title">{{ recipient.get_full_name|default:recipient.email }}</h2>
+          </div>
+          <form method="post" action="{% url 'toggle-favorite-contact' recipient.id %}">
+            {% csrf_token %}
+            <button class="ui-btn ui-btn--secondary ui-btn--sm" type="submit" data-submit-once>{% if recipient_is_favorite %}★ В избранном{% else %}☆ В избранное{% endif %}</button>
+          </form>
+        </div>
+
+        <section class="messenger__summary" aria-label="Краткая информация о собеседнике">
+          <span class="ui-avatar">{{ recipient.get_full_name|default:recipient.email|first|upper }}</span>
+          <div class="messenger__summary-name">
+            <strong>{{ recipient.get_full_name|default:recipient.email }}</strong>
+            <span>@{{ recipient.username }}</span>
+          </div>
+          <dl class="messenger__summary-facts">
+            <div><dt>Email</dt><dd>{{ recipient.email }}</dd></div>
+            {% if recipient_membership %}
+              <div><dt>Организация</dt><dd>{{ recipient_membership.organization.short_name }}</dd></div>
+              <div><dt>Роль</dt><dd>{{ recipient_membership.get_role_display }}</dd></div>
+            {% endif %}
+          </dl>
+        </section>
+
+        {% comment %}
+          role="log" с aria-live: пришедшее по websocket сообщение
+          объявляется скринридером. Контейнер обязан быть в разметке с
+          самого начала — если добавлять его вместе с первым сообщением,
+          объявлено не будет ничего.
+
+          tabindex="0" нужен потому, что область прокручивается: без него
+          до истории переписки нельзя добраться с клавиатуры.
+        {% endcomment %}
+        <div class="chat-log" data-chat-list role="log" aria-live="polite" aria-label="История переписки" tabindex="0">
+          {% for message in thread %}
+            {% if message.sender_id == user.id %}
+              {% include 'components/chat_message.html' with message_id=message.id author_name=message.sender.get_full_name|default:message.sender.email body=message.body attachment=message.attachment created_at=message.created_at is_own=True %}
+            {% else %}
+              {% include 'components/chat_message.html' with message_id=message.id author_name=message.sender.get_full_name|default:message.sender.email body=message.body attachment=message.attachment created_at=message.created_at is_own=False %}
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% include 'components/chat_composer.html' with form=form ws_kind="direct" ws_id=recipient.id attach_label="Файл" submit_label="Отправить" %}
+      {% else %}
+        <div class="ui-empty">
+          <h2 class="ui-empty__title" id="thread-title">Выберите собеседника</h2>
+          <p class="ui-empty__text">Введите ФИО, логин или email в поиске слева, затем откройте диалог.</p>
+        </div>
+      {% endif %}
+    </section>
+
+  </div>
 </div>
-{% include 'messaging/realtime_chat.html' %}
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/chat.js' %}{{ static_asset_version }}" defer></script>
 {% endblock %}

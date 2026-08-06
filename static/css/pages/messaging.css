@@ -1,0 +1,313 @@
+/* =========================================================================
+   Личные сообщения и чат курса
+   -------------------------------------------------------------------------
+   Один файл на обе страницы: разметка сообщения и поля ввода у них общая
+   (components/chat_message.html, components/chat_composer.html), и разводить
+   её по двум pages/*.css значило бы держать два описания одного компонента.
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   Раскладка мессенджера
+   ------------------------------------------------------------------------- */
+
+.messenger {
+    display: grid;
+    gap: var(--density-stack);
+    align-items: start;
+}
+
+/* Две колонки появляются только там, где списку контактов остаётся не
+   меньше 260px: уже него имя и логин перестают помещаться в строку. */
+@media (min-width: 1024px) {
+    .messenger {
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    }
+
+    /* Список контактов длиннее переписки — липкая колонка не даёт ему
+       уезжать вверх, пока читаешь диалог. */
+    .messenger__contacts {
+        position: sticky;
+        top: calc(var(--header-height) + var(--space-16));
+    }
+}
+
+.messenger__contacts {
+    gap: var(--space-12);
+}
+
+.messenger__hint {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-12);
+    line-height: var(--leading-normal);
+}
+
+.messenger__search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8);
+}
+
+.messenger__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.messenger__contact {
+    display: flex;
+    gap: var(--space-8);
+    align-items: center;
+    min-width: 0;
+    padding: var(--space-8);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+.messenger__contact:hover {
+    color: var(--color-text);
+    background: var(--color-surface-raised);
+}
+
+.messenger__contact:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Открытый диалог отличается не только фоном: у него есть полоса слева и
+   более плотное начертание имени — признаки, видимые и без цвета. */
+.messenger__contact.is-active {
+    color: var(--color-text);
+    background: var(--color-surface-raised);
+    box-shadow: inset var(--space-2) 0 0 var(--color-primary);
+}
+
+.messenger__contact.is-active .messenger__contact-name {
+    font-weight: var(--weight-semibold);
+}
+
+.messenger__contact-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.messenger__contact-name {
+    overflow: hidden;
+    font-size: var(--text-14);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.messenger__contact small {
+    overflow: hidden;
+    color: var(--color-text-faint);
+    font-size: var(--text-11);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.messenger__empty {
+    margin: 0;
+    padding: var(--space-16) var(--space-8);
+    color: var(--color-text-muted);
+    font-size: var(--text-13);
+    line-height: var(--leading-normal);
+}
+
+/* -------------------------------------------------------------------------
+   Переписка
+   ------------------------------------------------------------------------- */
+
+.messenger__thread {
+    gap: var(--space-16);
+    min-width: 0;
+}
+
+.messenger__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-12);
+    align-items: center;
+    padding-bottom: var(--space-12);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.messenger__summary-name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: var(--text-14);
+}
+
+.messenger__summary-name span {
+    color: var(--color-text-muted);
+    font-size: var(--text-12);
+}
+
+.messenger__summary-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-16);
+    margin: 0;
+    margin-inline-start: auto;
+}
+
+.messenger__summary-facts dt {
+    color: var(--color-text-faint);
+    font-size: var(--text-11);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+}
+
+.messenger__summary-facts dd {
+    max-width: 22ch;
+    margin: var(--space-2) 0 0;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: var(--text-12);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------
+   Лента сообщений
+   ------------------------------------------------------------------------- */
+
+.chat-log {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-12);
+    min-height: 20rem;
+    max-height: 60vh;
+    padding: var(--space-4);
+    overflow-y: auto;
+}
+
+.chat-log:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.chat-msg {
+    align-self: flex-start;
+    max-width: min(78%, 38rem);
+    padding: var(--space-8) var(--space-12);
+    background: var(--color-surface-sunken);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md);
+}
+
+/* Своё сообщение отличается стороной, формой уголка и фоном: на стороне
+   всё держится и без цвета. */
+.chat-msg--own {
+    align-self: flex-end;
+    background: var(--color-primary-surface);
+    border-color: var(--color-border-strong);
+    border-radius: var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md);
+}
+
+.chat-msg__author {
+    color: var(--color-text-muted);
+    font-size: var(--text-12);
+}
+
+.chat-msg__body {
+    margin: var(--space-4) 0;
+    overflow-wrap: anywhere;
+    line-height: var(--leading-normal);
+}
+
+.chat-msg__attachment {
+    display: inline-flex;
+    margin-bottom: var(--space-4);
+    color: var(--color-primary);
+    font-size: var(--text-13);
+    font-weight: var(--weight-medium);
+}
+
+.chat-msg__time {
+    display: block;
+    color: var(--color-text-faint);
+    font-size: var(--text-11);
+}
+
+/* -------------------------------------------------------------------------
+   Поле ввода
+   ------------------------------------------------------------------------- */
+
+.chat-composer {
+    display: grid;
+    gap: var(--space-8);
+    padding-top: var(--space-12);
+    border-top: 1px solid var(--color-border);
+}
+
+@media (min-width: 768px) {
+    .chat-composer {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: end;
+    }
+}
+
+.chat-composer__field {
+    min-width: 0;
+}
+
+.chat-composer__attach {
+    display: flex;
+    gap: var(--space-8);
+    align-items: center;
+    min-width: 0;
+}
+
+/* Input убран с экрана, но остаётся в потоке фокуса. Поэтому кольцо фокуса
+   рисуется на связанном <label>: иначе с клавиатуры не видно, где ты. */
+.chat-composer__attach input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Легаси-слой задаёт `label { margin: 16px 0 }` по тегу, и кнопка выбора
+   файла из-за этого поднималась на 16px выше кнопки отправки. Уйдёт вместе
+   с components/forms.css на этапе 4.14. */
+.chat-composer__attach-label {
+  margin: 0;
+}
+
+.chat-composer__attach:focus-within .chat-composer__attach-label {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.chat-composer__file {
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: var(--text-12);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Файл выбран — кнопка перестаёт быть нейтральной: рядом появляется имя
+   файла, а сама кнопка помечается галочкой. Одного имени мало: на узком
+   экране оно обрезается. */
+.chat-composer.has-attachment .chat-composer__attach-label::after {
+    content: " ✓";
+}
+
+/* -------------------------------------------------------------------------
+   Чат курса
+   ------------------------------------------------------------------------- */
+
+.course-chat {
+    max-width: 60rem;
+}

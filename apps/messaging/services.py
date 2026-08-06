@@ -5,6 +5,7 @@ from uuid import UUID
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db import transaction
+from django.utils import timezone
 
 from apps.courses.models import CourseRun
 from apps.notifications.models import Notification
@@ -14,6 +15,9 @@ from .realtime import course_room_name, direct_room_name
 
 
 def serialize_direct_message(message: DirectMessage) -> dict[str, str | bool | None]:
+    # localtime обязателен: время хранится в UTC, а шаблон печатает его в
+    # TIME_ZONE. Без перевода одно и то же сообщение показывало 16:03, когда
+    # пришло сокетом, и 19:03 после перезагрузки страницы.
     return {
         "id": str(message.pk),
         "sender_id": str(message.sender_id),
@@ -21,7 +25,7 @@ def serialize_direct_message(message: DirectMessage) -> dict[str, str | bool | N
         "body": message.body,
         "attachment_url": message.attachment.url if message.attachment else None,
         "attachment_content_type": message.attachment_content_type or None,
-        "created_at": message.created_at.strftime("%d.%m %H:%M"),
+        "created_at": timezone.localtime(message.created_at).strftime("%d.%m %H:%M"),
     }
 
 
@@ -33,7 +37,7 @@ def serialize_course_message(message: CourseMessage) -> dict[str, str | bool | N
         "body": message.body,
         "attachment_url": message.attachment.url if message.attachment else None,
         "attachment_content_type": message.attachment_content_type or None,
-        "created_at": message.created_at.strftime("%d.%m %H:%M"),
+        "created_at": timezone.localtime(message.created_at).strftime("%d.%m %H:%M"),
     }
 
 

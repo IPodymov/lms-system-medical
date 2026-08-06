@@ -42,12 +42,18 @@ def form_field(
     autocomplete: str | None = None,
     placeholder: str | None = None,
     hint: str | None = None,
+    label_hidden: bool = False,
 ) -> dict:
     """Отрисовать поле формы: метка, виджет, подсказка, ошибка.
 
     Поле связывается с подсказкой и ошибкой через aria-describedby, а при
     ошибке получает aria-invalid — без этого скринридер читает поле как
     обычное и не сообщает, что с ним не так.
+
+    label_hidden убирает метку с экрана, но оставляет её в разметке: поиск
+    контакта и поле ввода сообщения читаются из контекста глазами, а вот
+    скринридеру без метки поле остаётся безымянным. Ставить вместо метки
+    только placeholder нельзя — он исчезает при первом же символе.
     """
     widget = field.field.widget
     described_by = []
@@ -80,6 +86,7 @@ def form_field(
         "error_id": f"{field.auto_id}-error",
         "errors": field.errors,
         "is_choice": _is_choice(widget),
+        "label_hidden": label_hidden,
     }
 
 
