@@ -1,1 +1,35 @@
-{% extends 'base.html' %}{% block content %}<h1>{{ item.title }}</h1><p>{{ item.body }}</p>{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ item.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/notifications.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block content %}
+<div class="ui-stack notification-detail">
+
+  {% comment %}
+    Путь назад стоит первым в порядке Tab: страница открывается из списка и
+    возвращаться в него нужно чаще, чем делать что-либо ещё. Отдельной шапки
+    с хлебными крошками у приложения нет, поэтому ссылка живёт на странице.
+  {% endcomment %}
+  <a class="ui-btn ui-btn--ghost ui-btn--sm notification-detail__back" href="{% url 'notifications' %}">
+    <span aria-hidden="true">←</span> Все уведомления
+  </a>
+
+  <article class="ui-card ui-stack">
+    <header class="page-head">
+      <p class="page-head__eyebrow">Уведомление</p>
+      <h1 class="page-head__title">{{ item.title }}</h1>
+      <p class="page-head__subtitle">
+        <time datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:"d E Y, H:i" }}</time>
+      </p>
+    </header>
+
+    <div class="ui-prose">{{ item.body|linebreaksbr }}</div>
+  </article>
+
+</div>
+{% endblock %}

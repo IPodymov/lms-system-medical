@@ -1498,43 +1498,6 @@
     opacity: .7;
 }
 
-.notification-list {
-    display: grid;
-    gap: 10px;
-}
-
-.notification-item {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin: 0;
-    box-shadow: none;
-}
-
-.notification-item:hover {
-    border-color: var(--color-border-strong);
-}
-
-.notification-item.is-unread {
-    border-left: 3px solid var(--color-primary);
-}
-
-.notification-item strong {
-    display: block;
-}
-
-.notification-item p {
-    margin: 5px 0 0;
-    color: var(--color-text-muted);
-}
-
-.notification-item time {
-    flex: 0 0 auto;
-    color: var(--color-text-faint);
-    font-size: 12px;
-}
-
 .button-secondary {
     color: var(--color-text);
     background: var(--color-surface-raised);
@@ -2400,15 +2363,6 @@ table {
 
     .contact-search button {
         width: 100%;
-    }
-
-    .notification-item {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .notification-item time {
-        align-self: flex-start;
     }
 
     .table-wrap table {

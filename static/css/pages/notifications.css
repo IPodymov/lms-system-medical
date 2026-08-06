@@ -1,0 +1,98 @@
+/* =========================================================================
+   Уведомления: список и страница одного уведомления
+   -------------------------------------------------------------------------
+   Подключается обеими страницами через extra_css. Карточка уведомления
+   встречается только здесь, поэтому живёт на слое страницы, а не в ui.css.
+   ========================================================================= */
+
+.notification-list {
+  display: grid;
+  gap: var(--space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Базовая раскладка — узкий экран: заголовок, текст, снизу время и бейдж.
+   .ui-card уже flex-колонка, поэтому здесь только внутренние отступы. */
+.notification-card {
+  gap: var(--space-8);
+}
+
+.notification-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Без обнуления длинное слово в теле уведомления не даёт колонке
+     сжаться и растягивает страницу по горизонтали. */
+  min-width: 0;
+}
+
+.notification-card__title {
+  margin: 0;
+  font-size: var(--text-16);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+.notification-card__text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.notification-card__meta {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.notification-card__time {
+  color: var(--color-text-faint);
+  font-size: var(--text-12);
+  white-space: nowrap;
+}
+
+/* Непрочитанное: полоса слева и более плотное начертание заголовка.
+   Оба признака работают без цвета — рядом с бейджем «Новое» этого
+   достаточно, чтобы состояние читалось и в монохроме. */
+.notification-card--unread {
+  border-inline-start: var(--space-4) solid var(--color-primary);
+}
+
+.notification-card--unread .notification-card__title {
+  font-weight: var(--weight-semibold);
+}
+
+@media (min-width: 768px) {
+  .notification-card {
+    flex-direction: row;
+    gap: var(--space-16);
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  /* На широком экране время и бейдж встают колонкой у правого края,
+     чтобы даты всех уведомлений оказались на одной вертикали. */
+  .notification-card__meta {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Страница одного уведомления
+   ------------------------------------------------------------------------- */
+
+.notification-detail {
+  max-width: var(--measure);
+}
+
+/* Иначе ссылка-кнопка растянулась бы на всю ширину колонки и читалась бы
+   как основное действие страницы. */
+.notification-detail__back {
+  align-self: flex-start;
+}
