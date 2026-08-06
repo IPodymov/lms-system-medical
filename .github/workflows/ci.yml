@@ -48,5 +48,13 @@ jobs:
       - name: Missing migrations check
         run: python manage.py makemigrations --check --dry-run
 
+      # STORAGES["staticfiles"] is WhiteNoise's CompressedManifestStaticFilesStorage
+      # with WHITENOISE_MANIFEST_STRICT, so every {% static %} tag resolves through
+      # staticfiles.json. That manifest is a build artefact (staticfiles/ is
+      # gitignored), so without this step every view test that renders a template
+      # dies with "Missing staticfiles manifest entry". Mirrors the Dockerfile.
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
+
       - name: Run tests
         run: python manage.py test

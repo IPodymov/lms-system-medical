@@ -1,9 +1,28 @@
+# Секреты и окружение
 .env
 .env.production
 .venv/
+
+# Python
 __pycache__/
 *.py[cod]
+
+# Данные и генерируемые артефакты
 db.sqlite3
 media/
 staticfiles/
+
+# Кэши инструментов
 .pytest_cache/
+.ruff_cache/
+
+# Файлы ОС и редакторов
+.DS_Store
+.idea/
+.vscode/
+
+# Локальные настройки инструментов.
+# .claude/skills/ отслеживается намеренно: это общие для команды инструкции.
+.claude/settings.local.json
+.claude/hooks/
+.mcp.json
