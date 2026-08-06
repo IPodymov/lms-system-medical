@@ -1,17 +1,17 @@
 # Как продолжить редизайн
 
 Заметка для того, кто вернётся к работе — включая меня в другой сессии.
-Обновлено: 2026-08-06, после этапа 4.5.
+Обновлено: 2026-08-06, после этапа 4.6.
 
 ---
 
 ## Где мы остановились
 
-**Ветка:** `redesign/ui-stages-4.0-4.5`
-**Последний коммит:** `cb54b34` — дизайн-система и миграция шести страниц
-**В `main` не смёржено.**
+**Ветка:** `redesign/stage-4.6-notifications`
+**Коммиты:** `b2e45b9` — уведомления на дизайн-системе, `6f58a9f` — пагинация
+**В `main` не смёржено.** Этапы 4.0–4.5 в `main` уже есть.
 
-Готовы этапы **4.0 – 4.5**. Следующий — **4.6, уведомления**.
+Готовы этапы **4.0 – 4.6**. Следующий — **4.7, профиль**.
 
 Полная картина: [`README.md`](README.md). План и отчёты по этапам: [`03-plan.md`](03-plan.md), раздел «Ход выполнения».
 
@@ -21,7 +21,7 @@
 
 ```bash
 cd /путь/к/lms-system-medical
-git switch redesign/ui-stages-4.0-4.5
+git switch redesign/stage-4.6-notifications
 
 # База локальная, в git её нет — при чистом клоне нужно поднять заново
 DJANGO_USE_SQLITE=1 .venv/bin/python manage.py migrate
@@ -30,7 +30,7 @@ DJANGO_USE_SQLITE=1 .venv/bin/python manage.py seed_demo   # пароль все
 # Обязательно: без этого падают ВСЕ тесты (WHITENOISE_MANIFEST_STRICT)
 DJANGO_USE_SQLITE=1 .venv/bin/python manage.py collectstatic --noinput
 
-DJANGO_USE_SQLITE=1 .venv/bin/python -m pytest -q     # ожидается 103 passed
+DJANGO_USE_SQLITE=1 .venv/bin/python -m pytest -q     # ожидается 104 passed
 ```
 
 Прочитать перед правками: скилы `.claude/skills/design/SKILL.md` и
@@ -48,22 +48,26 @@ DJANGO_USE_SQLITE=1 DEBUG=1 .venv/bin/python manage.py runserver 8000
 
 ---
 
-## Следующий этап: 4.6 — уведомления
+## Следующий этап: 4.7 — профиль
 
-Файлы: `templates/notifications/list.html`, `templates/notifications/detail.html`
+Файл: `templates/accounts/profile.html`
 
 Что сделать:
-- список на карточках; непрочитанное отличается **не только цветом** (сейчас
-  единственный признак — класс `is-unread`);
-- `detail.html` сейчас это голый `<h1>` и `<p>` без обвязки — нужны шапка
-  страницы, дата, путь назад к списку;
-- пустое состояние с действием;
-- **[V]** пагинация: `notifications/views.py` отдаёт
-  `request.user.notifications.all()` целиком. Отдельным коммитом после
-  визуальной миграции.
+- две формы выводятся через `{{ profile_form.as_p }}` и
+  `{{ password_form.as_p }}` — перевести на `{% form_field %}` и
+  `{% form_errors %}` из `form_tags`. Ошибки полей сейчас не видны нигде;
+- история обучения дублирует карточку записи своей разметкой
+  (`.learning-card`, `.mini-progress`) — перевести на общий партиал
+  `templates/components/enrollment_card.html`;
+- `<i style="width: {{ ... }}%">` в мини-прогрессе: значение должно уходить
+  кастомным свойством, а `|floatformat:0` уже стоит — но проверить локаль
+  (ловушка №1 в `frontend-traps`);
+- шапка на `.page-head`, секция истории на `.section-head`, пустое
+  состояние на `.ui-empty` (текст и ссылка «Открыть каталог» сохраняются).
 
-Образцы для подражания: `templates/courses/catalog.html` (сетка карточек
-и секции), `templates/components/enrollment_card.html` (карточка-ссылка).
+Образцы: `templates/notifications/list.html` (шапка с действием справа,
+пустое состояние), `templates/courses/my_courses.html` (сетка карточек
+записей), `templates/accounts/register.html` (формы через партиал поля).
 
 ---
 
@@ -133,7 +137,7 @@ DJANGO_USE_SQLITE=1 DEBUG=1 .venv/bin/python manage.py runserver 8000
 
 ## Порядок оставшихся этапов
 
-`4.6 → 4.7 → 4.8 → 4.9 → 4.10 → 4.11 → 4.12 → 4.13 → 4.14`
+`4.7 → 4.8 → 4.9 → 4.10 → 4.11 → 4.12 → 4.13 → 4.14`
 
 Внутри блоков порядок можно менять — этапы независимы. **4.14 (удаление
 остатков легаси-слоя) строго последний:** пока хоть одна страница держится
