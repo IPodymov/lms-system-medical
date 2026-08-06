@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static form_tags %}
 
 {% block title %}{{ study_group.name }} — управление — МедЛМС{% endblock %}
 
@@ -80,33 +80,16 @@
           <p class="page-head__eyebrow">Новый студент</p>
           <h2 class="section-head__title">Добавить в группу</h2>
         </div>
-        <form class="ui-stack group-form" method="post" action="{% url 'add-student' %}">
+        {% form_errors student_form "Укажите ФИО, email и временный пароль студента." %}
+        <form class="ui-stack group-form" method="post" action="{% url 'add-student' %}" novalidate>
           {% csrf_token %}
           <input type="hidden" name="group_id" value="{{ study_group.id }}">
-          <div class="ui-field">
-            <label class="ui-label" for="student-last-name">Фамилия</label>
-            <input class="ui-input" id="student-last-name" name="last_name" autocomplete="family-name" required>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="student-first-name">Имя</label>
-            <input class="ui-input" id="student-first-name" name="first_name" autocomplete="given-name" required>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="student-middle-name">Отчество</label>
-            <input class="ui-input" id="student-middle-name" name="middle_name" autocomplete="additional-name">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="student-email">Email</label>
-            <input class="ui-input" id="student-email" name="email" type="email" autocomplete="email" required>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="student-password">Временный пароль</label>
-            <input class="ui-input" id="student-password" name="password" type="password" autocomplete="new-password" required>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="student-number">Номер студента</label>
-            <input class="ui-input" id="student-number" name="student_number">
-          </div>
+          {% form_field student_form.last_name autocomplete="family-name" %}
+          {% form_field student_form.first_name autocomplete="given-name" %}
+          {% form_field student_form.middle_name autocomplete="additional-name" %}
+          {% form_field student_form.email autocomplete="email" %}
+          {% form_field student_form.password autocomplete="new-password" %}
+          {% form_field student_form.student_number %}
           <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить</button>
         </form>
       </article>
@@ -135,23 +118,13 @@
           <p class="page-head__eyebrow">Приглашение</p>
           <h2 class="section-head__title">Ссылка на поток</h2>
         </div>
-        <form class="ui-stack group-form" method="post" action="{% url 'create-course-enrollment-link' %}">
+        {% form_errors link_form "Укажите поток и корректный срок действия ссылки." %}
+        <form class="ui-stack group-form" method="post" action="{% url 'create-course-enrollment-link' %}" novalidate>
           {% csrf_token %}
           <input type="hidden" name="next" value="{% url 'study-group-detail' study_group.id %}">
-          <div class="ui-field">
-            <label class="ui-label" for="link-run">Поток</label>
-            <select class="ui-select" id="link-run" name="course_run_id" required>
-              {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
-            </select>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="link-label">Название</label>
-            <input class="ui-input" id="link-label" name="label" placeholder="Для {{ study_group.name }}">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="link-expires">Действует до</label>
-            <input class="ui-input" id="link-expires" name="expires_at" type="datetime-local">
-          </div>
+          {% form_field link_form.course_run %}
+          {% form_field link_form.label placeholder=group_link_placeholder %}
+          {% form_field link_form.expires_at %}
           <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать ссылку</button>
         </form>
       </article>

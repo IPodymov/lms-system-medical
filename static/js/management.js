@@ -8,7 +8,7 @@
    Выбор синхронизируется между формами сразу и переживает перезагрузку —
    формы уходят обычным POST, после которого страница собирается заново. */
 (() => {
-    const selects = [...document.querySelectorAll("[data-organization-select]")];
+    const selects = [...document.querySelectorAll('select[name="organization"]')];
     if (selects.length < 2) return;
 
     const storageKey = "medlms-organization";

@@ -163,7 +163,7 @@ class CollegeManagementTests(TestCase):
         response = self.client.post(
             reverse("import-students"),
             {
-                "organization_id": self.organization.pk,
+                "organization": self.organization.pk,
                 "spreadsheet": SimpleUploadedFile(
                     "students.xlsx",
                     content.getvalue(),
@@ -193,7 +193,7 @@ class CollegeManagementTests(TestCase):
         response = self.client.post(
             reverse("import-students"),
             {
-                "organization_id": self.organization.pk,
+                "organization": self.organization.pk,
                 "spreadsheet": SimpleUploadedFile("students.xlsx", content.getvalue()),
             },
         )
@@ -241,11 +241,11 @@ class CollegeManagementTests(TestCase):
 
         self.client.post(
             reverse("assign-course-staff"),
-            {"course_run_id": course_run.pk, "user_id": teacher.pk, "role": "curator"},
+            {"course_run": course_run.pk, "user": teacher.pk, "role": "curator"},
         )
         self.client.post(
             reverse("manage-course-enrollment"),
-            {"action": "add_student", "course_run_id": course_run.pk, "user_id": student.pk},
+            {"action": "add_student", "course_run": course_run.pk, "user": student.pk},
         )
 
         self.assertTrue(
@@ -377,3 +377,74 @@ class ProfilePageTests(TestCase):
         self.assertContains(response, "Проверьте личные данные")
         self.fixture["user"].refresh_from_db()
         self.assertEqual(self.fixture["user"].email, "profile@test.local")
+
+
+class ManagementFormErrorTests(TestCase):
+    """Ошибки семи форм панели управления видны у полей, а не поверх страницы.
+
+    До этапа 4.10 любой промах отвечал редиректом и одной строкой в
+    messages: какое поле виновато — неизвестно, введённое — потеряно.
+    """
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser("management@test.local", "safe-password-123")
+        self.organization = Organization.objects.create(
+            name="Медколледж", short_name="МК", slug="mk-forms"
+        )
+        OrganizationMembership.objects.create(
+            user=self.admin,
+            organization=self.organization,
+            role=OrganizationMembership.Role.SYSTEM_ADMIN,
+            status="active",
+        )
+        self.client.force_login(self.admin)
+
+    def test_invalid_group_years_are_reported_at_the_field(self):
+        response = self.client.post(
+            reverse("add-study-group"),
+            {
+                "organization": self.organization.pk,
+                "name": "С-21",
+                "admission_year": 2030,
+                "graduation_year": 2026,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Год выпуска должен быть больше года поступления.", count=2)
+        # Введённое возвращается в форму: перенабирать не нужно.
+        self.assertContains(response, 'value="С-21"')
+        self.assertFalse(StudyGroup.objects.filter(name="С-21").exists())
+
+    def test_taken_username_is_reported_without_creating_the_user(self):
+        occupied = User.objects.create_user("occupied@test.local", "safe-password-123")
+        occupied.username = "ivanov"
+        occupied.save(update_fields=["username"])
+
+        response = self.client.post(
+            reverse("add-user"),
+            {
+                "organization": self.organization.pk,
+                "role": OrganizationMembership.Role.STUDENT,
+                "username": "ivanov",
+                "email": "new@test.local",
+                "password": "safe-password-123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Это имя пользователя уже занято.", count=2)
+        self.assertContains(response, "Укажите email, временный пароль и организацию.")
+        self.assertFalse(User.objects.filter(email="new@test.local").exists())
+
+    def test_wrong_file_type_is_reported_at_the_field(self):
+        response = self.client.post(
+            reverse("import-students"),
+            {
+                "organization": self.organization.pk,
+                "spreadsheet": SimpleUploadedFile("students.csv", b"group,full_name"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Файл должен быть в формате .xlsx.", count=2)

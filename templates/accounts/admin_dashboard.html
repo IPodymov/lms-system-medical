@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static form_tags %}
 
 {% block title %}Управление — МедЛМС{% endblock %}
 
@@ -49,22 +49,12 @@
       <p class="page-head__eyebrow">Первый шаг</p>
       <h2 class="section-head__title" id="organization-title">Организация</h2>
     </div>
-    <form class="mgmt-form" method="post" action="{% url 'add-organization' %}">
+    {% form_errors organization_form "Укажите название, сокращение и тип организации." %}
+    <form class="mgmt-form" method="post" action="{% url 'add-organization' %}" novalidate>
       {% csrf_token %}
-      <div class="ui-field">
-        <label class="ui-label" for="org-name">Полное название</label>
-        <input class="ui-input" id="org-name" name="name" required maxlength="255" placeholder="Медицинский колледж">
-      </div>
-      <div class="ui-field">
-        <label class="ui-label" for="org-short-name">Сокращение</label>
-        <input class="ui-input" id="org-short-name" name="short_name" required maxlength="80" placeholder="МК">
-      </div>
-      <div class="ui-field">
-        <label class="ui-label" for="org-type">Тип</label>
-        <select class="ui-select" id="org-type" name="institution_type" required>
-          {% for value, label in institution_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-        </select>
-      </div>
+      {% form_field organization_form.name placeholder="Медицинский колледж" %}
+      {% form_field organization_form.short_name placeholder="МК" %}
+      {% form_field organization_form.institution_type %}
       <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать организацию</button>
     </form>
   </section>
@@ -97,27 +87,14 @@
             <h3 class="mgmt-card__title">Создать группу</h3>
             <p class="mgmt-card__text">Добавьте группу вручную, затем откройте её состав.</p>
           </div>
-          <form class="mgmt-form" method="post" action="{% url 'add-study-group' %}">
+          {% form_errors study_group_form "Укажите группу и корректные годы поступления и выпуска." %}
+          <form class="mgmt-form" method="post" action="{% url 'add-study-group' %}" novalidate>
             {% csrf_token %}
-            <div class="ui-field">
-              <label class="ui-label" for="group-organization">Организация</label>
-              <select class="ui-select" id="group-organization" name="organization_id" data-organization-select required>
-                {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
-              </select>
-            </div>
-            <div class="ui-field">
-              <label class="ui-label" for="group-name">Номер группы</label>
-              <input class="ui-input" id="group-name" name="name" required placeholder="СД-21">
-            </div>
+            {% form_field study_group_form.organization %}
+            {% form_field study_group_form.name placeholder="СД-21" %}
             <div class="mgmt-form__row">
-              <div class="ui-field">
-                <label class="ui-label" for="group-admission">Поступление</label>
-                <input class="ui-input" id="group-admission" name="admission_year" type="number" min="2000" value="2026" required>
-              </div>
-              <div class="ui-field">
-                <label class="ui-label" for="group-graduation">Выпуск</label>
-                <input class="ui-input" id="group-graduation" name="graduation_year" type="number" min="2001" value="2030" required>
-              </div>
+              {% form_field study_group_form.admission_year %}
+              {% form_field study_group_form.graduation_year %}
             </div>
             <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать группу</button>
           </form>
@@ -128,18 +105,11 @@
             <h3 class="mgmt-card__title">Импорт из Excel</h3>
             <p class="mgmt-card__text">Загрузите список с ФИО и номером группы. Логин и временный пароль будут созданы автоматически и выданы отдельным файлом.</p>
           </div>
-          <form class="mgmt-form" method="post" enctype="multipart/form-data" action="{% url 'import-students' %}">
+          {% form_errors import_form "Выберите организацию и Excel-файл формата .xlsx." %}
+          <form class="mgmt-form" method="post" enctype="multipart/form-data" action="{% url 'import-students' %}" novalidate>
             {% csrf_token %}
-            <div class="ui-field">
-              <label class="ui-label" for="import-organization">Организация</label>
-              <select class="ui-select" id="import-organization" name="organization_id" data-organization-select required>
-                {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
-              </select>
-            </div>
-            <div class="ui-field">
-              <label class="ui-label" for="import-file">Excel-файл</label>
-              <input class="ui-input" id="import-file" name="spreadsheet" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
-            </div>
+            {% form_field import_form.organization %}
+            {% form_field import_form.spreadsheet %}
             <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Импортировать</button>
           </form>
           <p class="mgmt-card__note">Обязательные колонки: <code>group</code> и <code>full_name</code>. Вместо <code>full_name</code> подойдут <code>first_name</code>, <code>last_name</code>. Необязательные: <code>student_number</code>, <code>admission_year</code>, <code>graduation_year</code>, <code>email</code>, <code>password</code>.</p>
@@ -173,44 +143,17 @@
         <h2 class="section-head__title" id="people-title">Отдельное создание учётной записи</h2>
       </div>
       <article class="ui-card">
-        <form class="mgmt-form mgmt-form--two-column" method="post" action="{% url 'add-user' %}">
+        {% form_errors user_form "Укажите email, временный пароль и организацию." %}
+        <form class="mgmt-form mgmt-form--two-column" method="post" action="{% url 'add-user' %}" novalidate>
           {% csrf_token %}
-          <div class="ui-field">
-            <label class="ui-label" for="user-organization">Организация</label>
-            <select class="ui-select" id="user-organization" name="organization_id" data-organization-select required>
-              {% for organization in organizations %}<option value="{{ organization.id }}">{{ organization.short_name }}</option>{% endfor %}
-            </select>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-role">Роль</label>
-            <select class="ui-select" id="user-role" name="role">
-              {% for value, label in roles %}<option value="{{ value }}" {% if value == 'student' %}selected{% endif %}>{{ label }}</option>{% endfor %}
-            </select>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-last-name">Фамилия</label>
-            <input class="ui-input" id="user-last-name" name="last_name" autocomplete="family-name">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-first-name">Имя</label>
-            <input class="ui-input" id="user-first-name" name="first_name" autocomplete="given-name">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-middle-name">Отчество</label>
-            <input class="ui-input" id="user-middle-name" name="middle_name" autocomplete="additional-name">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-username">Логин</label>
-            <input class="ui-input" id="user-username" name="username" required autocomplete="username">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-email">Email</label>
-            <input class="ui-input" id="user-email" name="email" type="email" required autocomplete="email">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="user-password">Временный пароль</label>
-            <input class="ui-input" id="user-password" name="password" type="password" autocomplete="new-password" required>
-          </div>
+          {% form_field user_form.organization %}
+          {% form_field user_form.role %}
+          {% form_field user_form.last_name autocomplete="family-name" %}
+          {% form_field user_form.first_name autocomplete="given-name" %}
+          {% form_field user_form.middle_name autocomplete="additional-name" %}
+          {% form_field user_form.username autocomplete="username" %}
+          {% form_field user_form.email autocomplete="email" %}
+          {% form_field user_form.password autocomplete="new-password" %}
           <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать пользователя</button>
         </form>
       </article>
@@ -224,28 +167,12 @@
       <div class="mgmt-grid">
         <article class="ui-card ui-stack">
           <h3 class="mgmt-card__title">Назначить сотрудника</h3>
-          <form class="mgmt-form" method="post" action="{% url 'assign-course-staff' %}">
+          {% form_errors staff_form "Выберите преподавателя этой организации и роль в курсе." %}
+          <form class="mgmt-form" method="post" action="{% url 'assign-course-staff' %}" novalidate>
             {% csrf_token %}
-            <div class="ui-field">
-              <label class="ui-label" for="staff-run">Поток</label>
-              <select class="ui-select" id="staff-run" name="course_run_id" required>
-                {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
-              </select>
-            </div>
-            <div class="ui-field">
-              <label class="ui-label" for="staff-teacher">Преподаватель</label>
-              <select class="ui-select" id="staff-teacher" name="user_id" required>
-                {% for teacher in teachers %}<option value="{{ teacher.user.id }}">{{ teacher.user.get_full_name|default:teacher.user.email }}</option>{% endfor %}
-              </select>
-            </div>
-            <div class="ui-field">
-              <label class="ui-label" for="staff-role">Роль</label>
-              <select class="ui-select" id="staff-role" name="role">
-                <option value="curator">Куратор</option>
-                <option value="teacher">Преподаватель</option>
-                <option value="assistant">Ассистент</option>
-              </select>
-            </div>
+            {% form_field staff_form.course_run %}
+            {% form_field staff_form.user %}
+            {% form_field staff_form.role %}
             <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Назначить</button>
           </form>
         </article>
@@ -255,21 +182,12 @@
             <h3 class="mgmt-card__title">Записать на поток</h3>
             <p class="mgmt-card__text">Для записи всей группы откройте её состав: там поток уже выбран в контексте группы.</p>
           </div>
-          <form class="mgmt-form" method="post" action="{% url 'manage-course-enrollment' %}">
+          {% form_errors enrollment_form "Выберите поток и слушателя." %}
+          <form class="mgmt-form" method="post" action="{% url 'manage-course-enrollment' %}" novalidate>
             {% csrf_token %}
             <input name="action" value="add_student" type="hidden">
-            <div class="ui-field">
-              <label class="ui-label" for="enroll-run">Поток</label>
-              <select class="ui-select" id="enroll-run" name="course_run_id" required>
-                {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
-              </select>
-            </div>
-            <div class="ui-field">
-              <label class="ui-label" for="enroll-student">Студент</label>
-              <select class="ui-select" id="enroll-student" name="user_id" required>
-                {% for student in students %}<option value="{{ student.user.id }}">{{ student.user.get_full_name|default:student.user.email }}</option>{% endfor %}
-              </select>
-            </div>
+            {% form_field enrollment_form.course_run %}
+            {% form_field enrollment_form.user %}
             <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Записать студента</button>
           </form>
         </article>
@@ -282,23 +200,13 @@
         <h2 class="section-head__title" id="links-title">Ссылки для записи на курс</h2>
       </div>
       <article class="ui-card">
-        <form class="mgmt-form" method="post" action="{% url 'create-course-enrollment-link' %}">
+        {% form_errors link_form "Укажите поток и корректный срок действия ссылки." %}
+        <form class="mgmt-form" method="post" action="{% url 'create-course-enrollment-link' %}" novalidate>
           {% csrf_token %}
           <input type="hidden" name="next" value="{% url 'admin-dashboard' %}">
-          <div class="ui-field">
-            <label class="ui-label" for="new-link-run">Поток</label>
-            <select class="ui-select" id="new-link-run" name="course_run_id" required>
-              {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
-            </select>
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="new-link-label">Название для команды</label>
-            <input class="ui-input" id="new-link-label" name="label" placeholder="Осенний набор">
-          </div>
-          <div class="ui-field">
-            <label class="ui-label" for="new-link-expires">Действует до</label>
-            <input class="ui-input" id="new-link-expires" name="expires_at" type="datetime-local">
-          </div>
+          {% form_field link_form.course_run %}
+          {% form_field link_form.label placeholder="Осенний набор" %}
+          {% form_field link_form.expires_at %}
           <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать ссылку</button>
         </form>
       </article>
