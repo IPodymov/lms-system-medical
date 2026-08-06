@@ -1,26 +1,85 @@
 {% extends 'base.html' %}
-{% block title %}Новый курс | МедЛМС{% endblock %}
+{% load static form_tags %}
+
+{% block title %}Новый курс — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/course-authoring.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="course-create-layout">
-  <div class="course-create-intro">
-    <p class="eyebrow">Новый курс</p>
-    <h1>Начните с основы курса</h1>
-    <p>Сначала сохраните карточку курса. Затем в конструкторе соберите программу: разделы, темы внутри них и учебные блоки для каждой темы.</p>
-    <ol class="course-structure-guide" aria-label="Структура курса">
-      <li><span>1</span><div><strong>Курс</strong><small>название, описание и сроки</small></div></li>
-      <li><span>2</span><div><strong>Раздел</strong><small>крупная часть программы, например «Модуль 1»</small></div></li>
-      <li><span>3</span><div><strong>Тема</strong><small>конкретное занятие внутри раздела</small></div></li>
-      <li><span>4</span><div><strong>Блок</strong><small>лекция, файл или тест внутри темы</small></div></li>
-    </ol>
+<div class="ui-stack">
+
+  {% form_errors form "Проверьте карточку курса" %}
+
+  <div class="course-create">
+
+    <div class="ui-stack course-create__intro">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Новый курс</p>
+        <h1 class="page-head__title">Начните с основы курса</h1>
+        <p class="page-head__subtitle">Сначала сохраните карточку курса. Затем в конструкторе соберите программу: разделы, темы внутри них и учебные блоки для каждой темы.</p>
+      </header>
+
+      {% comment %}
+        Список нумерованный: порядок шагов здесь и есть содержание. Номер
+        рисует сам <li> через счётчик, а не рукописный <span> с цифрой —
+        иначе скринридер читает число дважды.
+      {% endcomment %}
+      <ol class="course-steps" aria-label="Структура курса">
+        <li class="course-steps__item">
+          <strong>Курс</strong>
+          <small>название, описание и сроки</small>
+        </li>
+        <li class="course-steps__item">
+          <strong>Раздел</strong>
+          <small>крупная часть программы, например «Модуль 1»</small>
+        </li>
+        <li class="course-steps__item">
+          <strong>Тема</strong>
+          <small>конкретное занятие внутри раздела</small>
+        </li>
+        <li class="course-steps__item">
+          <strong>Блок</strong>
+          <small>лекция, файл или тест внутри темы</small>
+        </li>
+      </ol>
+    </div>
+
+    <section class="ui-card ui-stack course-create__form" aria-labelledby="course-form-title">
+      <div>
+        <p class="page-head__eyebrow">Шаг 1 из 2</p>
+        <h2 class="section-head__title" id="course-form-title">Карточка курса</h2>
+        <p class="course-create__hint">Эти данные увидят слушатели в каталоге.</p>
+      </div>
+
+      <form class="ui-stack" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% form_field form.title placeholder="Например, Основы клинического мышления" %}
+        {% form_field form.short_description placeholder="Одно предложение для каталога" %}
+        {% form_field form.description placeholder="Что изучит слушатель и для кого предназначен курс" %}
+
+        {% comment %}
+          Компонент .ui-fieldset: legend вынут из выреза рамки float'ом,
+          раскладка живёт во вложенном __body — см. components/ui.css.
+        {% endcomment %}
+        <fieldset class="ui-fieldset">
+          <legend class="ui-fieldset__legend">Сроки обучения</legend>
+          <div class="ui-fieldset__body ui-stack">
+            <p class="course-create__hint">Необязательно. Их можно задать или изменить позже в настройках курса.</p>
+            <div class="course-create__dates">
+              {% form_field form.course_start %}
+              {% form_field form.course_end %}
+            </div>
+          </div>
+        </fieldset>
+
+        {% form_field form.cover %}
+
+        <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Сохранить и перейти к программе</button>
+      </form>
+    </section>
+
   </div>
-  <form method="post" enctype="multipart/form-data" class="form-card course-create-form">{% csrf_token %}
-    <div class="form-card-heading"><p class="eyebrow">Шаг 1 из 2</p><h2>Карточка курса</h2><p>Эти данные увидят слушатели в каталоге.</p></div>
-    <label>Наименование курса<input name="title" required maxlength="255" value="{{ request.POST.title }}" placeholder="Например, Основы клинического мышления"></label>
-    <label>Краткое описание<input name="short_description" maxlength="500" value="{{ request.POST.short_description }}" placeholder="Одно предложение для каталога"></label>
-    <label>Подробное описание<textarea name="description" rows="6" placeholder="Что изучит слушатель и для кого предназначен курс">{{ request.POST.description }}</textarea></label>
-    <fieldset><legend>Сроки обучения</legend><p>Необязательно. Их можно задать или изменить позже в настройках курса.</p><div class="course-date-fields"><label>Дата начала<input type="date" name="course_start" value="{{ request.POST.course_start }}"></label><label>Дата окончания<input type="date" name="course_end" value="{{ request.POST.course_end }}"></label></div></fieldset>
-    <label>Обложка <small>необязательно</small><input type="file" name="cover" accept="image/*"></label>
-    <button>Сохранить и перейти к программе</button>
-  </form>
-</section>
+</div>
 {% endblock %}

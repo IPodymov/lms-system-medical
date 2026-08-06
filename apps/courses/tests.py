@@ -565,3 +565,77 @@ class CourseAuthoringViewsTests(TestCase):
         self.assertTrue(question.image)
         self.assertEqual(question.options.filter(is_correct=True).count(), 2)
         self.assertEqual(question.options.get(position=1).marker_x, 12.5)
+
+
+class CourseAuthoringFormTests(TestCase):
+    """Формы создания курса и теста показывают ошибки у полей.
+
+    До этапа 4.11 обе читались из request.POST, а введённое возвращалось в
+    разметку через {{ request.POST.title }} — только для тех полей, которые
+    кто-то не забыл так вернуть.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("authoring@test.local", "safe-password-123")
+        self.organization = Organization.objects.create(
+            name="Медколледж", short_name="МК", slug="authoring-org"
+        )
+        OrganizationMembership.objects.create(
+            user=self.user,
+            organization=self.organization,
+            role=OrganizationMembership.Role.TEACHER,
+            status="active",
+        )
+        self.client.force_login(self.user)
+
+    def test_course_without_title_reports_the_error_at_the_field(self):
+        response = self.client.post(reverse("course-create"), {"short_description": "Описание"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "Укажите наименование курса.", count=2, status_code=400)
+        # Введённое возвращается: набирать заново не нужно.
+        self.assertContains(response, "Описание", status_code=400)
+        self.assertFalse(Course.objects.exists())
+
+    def test_half_filled_dates_are_reported_without_creating_the_course(self):
+        response = self.client.post(
+            reverse("course-create"), {"title": "Курс", "course_start": "2026-09-01"}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            "Укажите и дату начала, и дату окончания обучения.",
+            count=2,
+            status_code=400,
+        )
+        self.assertFalse(Course.objects.exists())
+
+    def test_end_before_start_is_reported_without_creating_the_course(self):
+        response = self.client.post(
+            reverse("course-create"),
+            {"title": "Курс", "course_start": "2026-09-01", "course_end": "2026-08-01"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            "Дата окончания обучения должна быть позже даты начала.",
+            count=2,
+            status_code=400,
+        )
+        self.assertFalse(Course.objects.exists())
+
+    def test_quiz_editor_script_is_external(self):
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Курс",
+            slug="authoring-course",
+            created_by=self.user,
+        )
+        course.authors.create(user=self.user, role="owner")
+
+        response = self.client.get(reverse("quiz-create", args=[course.pk]))
+
+        self.assertContains(response, "js/quiz_editor")
+        self.assertNotContains(response, "const markerLayer")

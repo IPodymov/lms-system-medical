@@ -43,9 +43,10 @@ DJANGO_USE_SQLITE=1 .venv/bin/python -m pytest -q     # ожидается 114 p
 Локальный просмотр:
 
 ```bash
-# DEBUG=True, а не DEBUG=1: иначе Django включает кеширующий загрузчик
-# шаблонов, и правки шаблонов не видны до перезапуска
-DJANGO_USE_SQLITE=1 DEBUG=True .venv/bin/python manage.py runserver 8000
+# Именно DEBUG=1: settings.py сравнивает строку с "1", поэтому DEBUG=True
+# означает DEBUG=False — Django включает кеширующий загрузчик шаблонов, и
+# правки шаблонов не видны до перезапуска сервера
+DJANGO_USE_SQLITE=1 DEBUG=1 .venv/bin/python manage.py runserver 8000
 ```
 
 Каталог компонентов: `http://127.0.0.1:8000/styleguide/` — нужен пользователь

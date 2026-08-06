@@ -1,0 +1,158 @@
+/* =========================================================================
+   Создание курса и создание теста
+   -------------------------------------------------------------------------
+   Две страницы одного сценария: преподаватель заводит курс, затем в
+   конструкторе добавляет к теме тест. Общего у них немного — подсказки под
+   заголовками и группы полей, — но разводить это по двум файлам значило бы
+   описать одно и то же дважды.
+   ========================================================================= */
+
+.course-create {
+  display: grid;
+  gap: var(--density-section-gap);
+  align-items: start;
+}
+
+/* Форма справа от объяснения — только когда объяснению остаётся хотя бы
+   340px: уже него список шагов рвётся на две строки в каждом пункте. */
+@media (min-width: 1024px) {
+  .course-create {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.course-create__intro {
+  min-width: 0;
+}
+
+.course-create__form {
+  min-width: 0;
+}
+
+.course-create__hint {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.course-create__dates {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+/* -------------------------------------------------------------------------
+   Структура курса: курс → раздел → тема → блок
+   ------------------------------------------------------------------------- */
+
+.course-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: course-step;
+}
+
+.course-steps__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4) var(--space-12);
+  align-items: baseline;
+  padding: var(--space-12) var(--space-16);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  counter-increment: course-step;
+}
+
+/* Номер рисует счётчик, а не рукописный <span> с цифрой: так номер не
+   попадает в текстовый слой и скринридер не читает его как содержимое. */
+.course-steps__item::before {
+  content: counter(course-step);
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  color: var(--color-on-primary-surface);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary-surface);
+  border-radius: var(--radius-full);
+}
+
+.course-steps__item small {
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+  line-height: var(--leading-normal);
+}
+
+/* -------------------------------------------------------------------------
+   Создание теста
+   ------------------------------------------------------------------------- */
+
+.quiz-create {
+  max-width: 52rem;
+}
+
+/* Иначе ссылка-кнопка растянулась бы на всю ширину колонки. */
+.quiz-create__back {
+  align-self: flex-start;
+}
+
+/* Вариант ответа и отметка «правильный» стоят рядом, пока хватает ширины. */
+.quiz-create__option {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  align-items: end;
+}
+
+.quiz-create__option > .ui-field {
+  flex: 1 1 min(100%, 18rem);
+}
+
+/* -------------------------------------------------------------------------
+   Разметка изображения
+   ------------------------------------------------------------------------- */
+
+.quiz-editor {
+  position: relative;
+  width: min(100%, 45rem);
+}
+
+.quiz-editor__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.quiz-editor__markers {
+  position: absolute;
+  inset: 0;
+}
+
+/* Координаты приходят из скрипта кастомными свойствами: разметка сообщает
+   данное, решение о позиционировании остаётся здесь. Размер отметки —
+   32px, это минимальная цель нажатия по WCAG 2.5.8 с запасом. */
+.quiz-editor__marker {
+  position: absolute;
+  left: var(--marker-x);
+  top: var(--marker-y);
+  display: grid;
+  place-items: center;
+  width: var(--space-32);
+  height: var(--space-32);
+  color: var(--color-primary-contrast);
+  font-size: var(--text-13);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary);
+  border: 2px solid var(--color-primary-contrast);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}

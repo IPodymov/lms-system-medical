@@ -18,6 +18,7 @@ from apps.learning.services import EnrollmentError, enroll
 from apps.organizations.models import Organization
 
 from . import services
+from .forms import CourseCreateForm, QuizCreateForm
 from .models import (
     ContentBlock,
     Course,
@@ -215,29 +216,18 @@ def course_create(request):
     else:
         raise PermissionDenied
 
-    if request.method == "POST":
-        title = request.POST.get("title", "").strip()
-        if not title:
-            messages.error(request, "Укажите наименование курса.")
-            return render(request, "courses/create.html", status=400)
-        try:
-            start_at, end_at = _parse_course_dates(request)
-        except ValueError as error:
-            messages.error(request, str(error))
-            return render(request, "courses/create.html", status=400)
-
+    form = CourseCreateForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        start_at, end_at = form.course_run_period()
         with transaction.atomic():
-            course = Course.objects.create(
-                organization=organization,
-                title=title,
-                slug=_course_slug(organization, title),
-                short_description=request.POST.get("short_description", "").strip(),
-                description=request.POST.get("description", "").strip(),
-                cover=resize_uploaded_image(
-                    request.FILES.get("cover"), max_dimension=COURSE_COVER_MAX_DIMENSION
-                ),
-                created_by=request.user,
+            course = form.save(commit=False)
+            course.organization = organization
+            course.slug = _course_slug(organization, course.title)
+            course.cover = resize_uploaded_image(
+                form.cleaned_data.get("cover"), max_dimension=COURSE_COVER_MAX_DIMENSION
             )
+            course.created_by = request.user
+            course.save()
             CourseAuthor.objects.create(course=course, user=request.user, role="owner")
             if start_at:
                 services.create_course_run(
@@ -247,30 +237,42 @@ def course_create(request):
                     end_at=end_at,
                     status=CourseRun.Status.PLANNED,
                 )
-            # Поддерживаем старый API формы создания: старые клиенты могут передать
-            # первый материал сразу, хотя основной интерфейс теперь ведёт в конструктор.
-            lesson_title = request.POST.get("lesson_title", "").strip()
-            lesson_content = request.POST.get("lesson_content", "").strip()
-            material = request.FILES.get("material_file")
-            if lesson_title or lesson_content or material:
-                lesson = services.add_lesson(
-                    course,
-                    section_title="Программа курса",
-                    lesson_title=lesson_title or "Введение",
-                )
-                if lesson_content:
-                    services.create_text_block(
-                        lesson, title=lesson_title or "Введение", body=lesson_content
-                    )
-                if material:
-                    services.create_file_block(
-                        lesson,
-                        title=request.POST.get("material_title", "").strip() or material.name,
-                        file=material,
-                    )
+            _create_initial_material(request, course)
         messages.success(request, "Курс создан. Соберите программу из тем и блоков.")
         return redirect("course-edit", course.pk)
-    return render(request, "courses/create.html")
+
+    return render(
+        request,
+        "courses/create.html",
+        {"form": form},
+        status=400 if request.method == "POST" else 200,
+    )
+
+
+def _create_initial_material(request, course) -> None:
+    """Поддержка старого API формы создания.
+
+    Основной интерфейс ведёт в конструктор, но старые клиенты могли
+    передать первый материал прямо в форме создания курса.
+    """
+    lesson_title = request.POST.get("lesson_title", "").strip()
+    lesson_content = request.POST.get("lesson_content", "").strip()
+    material = request.FILES.get("material_file")
+    if not (lesson_title or lesson_content or material):
+        return
+    lesson = services.add_lesson(
+        course,
+        section_title="Программа курса",
+        lesson_title=lesson_title or "Введение",
+    )
+    if lesson_content:
+        services.create_text_block(lesson, title=lesson_title or "Введение", body=lesson_content)
+    if material:
+        services.create_file_block(
+            lesson,
+            title=request.POST.get("material_title", "").strip() or material.name,
+            file=material,
+        )
 
 
 def _course_lesson(course):
@@ -621,74 +623,35 @@ def quiz_create(request, course_id):
         raise PermissionDenied
     lessons = Lesson.objects.filter(section__course=course).select_related("section")
     selected_lesson = _selected_lesson(course, request.GET.get("lesson_id"))
-    if request.method == "POST":
-        quiz_title = request.POST.get("quiz_title", "").strip()
-        text = request.POST.get("question_text", "").strip()
-        options = [value.strip() for value in request.POST.getlist("option") if value.strip()]
-        is_image_question = request.POST.get("question_kind") == "image"
-        question_type = (
-            Question.Type.MULTIPLE
-            if request.POST.get("answer_mode") == "multiple"
-            else Question.Type.SINGLE
+    form = QuizCreateForm(
+        request.POST or None,
+        request.FILES or None,
+        lessons=lessons,
+        initial={"lesson": selected_lesson},
+    )
+    if request.method == "POST" and form.is_valid():
+        data = form.cleaned_data
+        services.create_quiz_block(
+            data["lesson"] or _selected_lesson(course, None),
+            title=data["quiz_title"],
+            question_text=data["question_text"],
+            options=data["options"],
+            correct_indexes=data["correct_indexes"],
+            organization=course.organization,
+            author=request.user,
+            question_type=(
+                Question.Type.MULTIPLE
+                if data["answer_mode"] == "multiple"
+                else Question.Type.SINGLE
+            ),
+            image=data["question_image"] if form.is_image_question else None,
+            markers=data["markers"] if form.is_image_question else None,
         )
-        correct_options = request.POST.getlist("correct_option")
-        try:
-            correct_indexes = {int(value) for value in correct_options}
-        except ValueError:
-            correct_indexes = set()
-        markers = []
-        if is_image_question:
-            marker_x_values = request.POST.getlist("marker_x")
-            marker_y_values = request.POST.getlist("marker_y")
-            if len(marker_x_values) != len(marker_y_values):
-                marker_x_values = []
-            for x, y in zip(marker_x_values, marker_y_values, strict=True):
-                try:
-                    marker_x, marker_y = float(x), float(y)
-                except ValueError:
-                    markers = []
-                    break
-                if not 0 <= marker_x <= 100 or not 0 <= marker_y <= 100:
-                    markers = []
-                    break
-                markers.append((marker_x, marker_y))
-            options = [f"Область {position}" for position in range(1, len(markers) + 1)]
-        lesson = _selected_lesson(course, request.POST.get("lesson_id"))
-        minimum_options = 1 if is_image_question else 2
-        has_valid_correct_count = (
-            len(correct_indexes) >= 1
-            and correct_indexes.issubset(range(len(options)))
-            and (question_type == Question.Type.MULTIPLE or len(correct_indexes) == 1)
-        )
-        if (
-            not quiz_title
-            or not text
-            or len(options) < minimum_options
-            or not has_valid_correct_count
-            or (is_image_question and (not request.FILES.get("question_image") or not markers))
-        ):
-            messages.error(
-                request,
-                "Заполните вопрос, добавьте области на изображение и отметьте правильные ответы.",
-            )
-        else:
-            services.create_quiz_block(
-                lesson,
-                title=quiz_title,
-                question_text=text,
-                options=options,
-                correct_indexes=correct_indexes,
-                organization=course.organization,
-                author=request.user,
-                question_type=question_type,
-                image=request.FILES.get("question_image") if is_image_question else None,
-                markers=markers if is_image_question else None,
-            )
-            messages.success(request, "Тест добавлен в программу курса.")
-            return redirect("course-edit", course.pk)
+        messages.success(request, "Тест добавлен в программу курса.")
+        return redirect("course-edit", course.pk)
     return render(
         request,
         "courses/quiz_create.html",
-        {"course": course, "lessons": lessons, "selected_lesson": selected_lesson},
+        {"course": course, "form": form},
         status=400 if request.method == "POST" else 200,
     )

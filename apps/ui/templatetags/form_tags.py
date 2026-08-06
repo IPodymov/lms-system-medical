@@ -43,12 +43,17 @@ def form_field(
     placeholder: str | None = None,
     hint: str | None = None,
     label_hidden: bool = False,
+    optional_note: bool = True,
 ) -> dict:
     """Отрисовать поле формы: метка, виджет, подсказка, ошибка.
 
     Поле связывается с подсказкой и ошибкой через aria-describedby, а при
     ошибке получает aria-invalid — без этого скринридер читает поле как
     обычное и не сообщает, что с ним не так.
+
+    optional_note=False убирает приписку «— необязательно». Она нужна там,
+    где поле можно пропустить, но вводит в заблуждение у списка с уже
+    выбранным значением и у поля, обязательного только в одной ветке формы.
 
     label_hidden убирает метку с экрана, но оставляет её в разметке: поиск
     контакта и поле ввода сообщения читаются из контекста глазами, а вот
@@ -87,6 +92,7 @@ def form_field(
         "errors": field.errors,
         "is_choice": _is_choice(widget),
         "label_hidden": label_hidden,
+        "optional_note": optional_note,
     }
 
 
