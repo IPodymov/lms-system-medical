@@ -20,9 +20,24 @@
    сплошным потоком, поэтому вертикальный ритм задан здесь, а не gap'ом
    контейнера: между заголовком и его списком расстояние меньше, чем
    между разделами. */
+/* Длину строки ограничивает сама колонка (.documentation), поэтому
+   .ui-prose статье не нужен: он сузил бы карточку, а не текст в ней. */
+.documentation__article p,
+.documentation__article li {
+  line-height: var(--leading-normal);
+}
+
 .documentation__article ol,
+.documentation__article ul,
 .documentation__article p {
   margin: 0;
+}
+
+.documentation__article ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-inline-start: var(--space-24);
 }
 
 .documentation__article ol {
