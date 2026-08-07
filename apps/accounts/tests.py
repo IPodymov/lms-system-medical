@@ -6,7 +6,13 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
-from apps.courses.models import Course, CourseEnrollmentLink, CourseRun, CourseRunStaff
+from apps.courses.models import (
+    ContentBlock,
+    Course,
+    CourseEnrollmentLink,
+    CourseRun,
+    CourseRunStaff,
+)
 from apps.learning.models import Enrollment
 from apps.organizations.models import (
     Department,
@@ -16,6 +22,7 @@ from apps.organizations.models import (
     StudyGroup,
     StudyGroupMember,
 )
+from apps.test_helpers import CourseFixture
 
 from .models import User
 
@@ -156,7 +163,7 @@ class CollegeManagementTests(TestCase):
         response = self.client.post(
             reverse("import-students"),
             {
-                "organization_id": self.organization.pk,
+                "organization": self.organization.pk,
                 "spreadsheet": SimpleUploadedFile(
                     "students.xlsx",
                     content.getvalue(),
@@ -186,7 +193,7 @@ class CollegeManagementTests(TestCase):
         response = self.client.post(
             reverse("import-students"),
             {
-                "organization_id": self.organization.pk,
+                "organization": self.organization.pk,
                 "spreadsheet": SimpleUploadedFile("students.xlsx", content.getvalue()),
             },
         )
@@ -234,11 +241,11 @@ class CollegeManagementTests(TestCase):
 
         self.client.post(
             reverse("assign-course-staff"),
-            {"course_run_id": course_run.pk, "user_id": teacher.pk, "role": "curator"},
+            {"course_run": course_run.pk, "user": teacher.pk, "role": "curator"},
         )
         self.client.post(
             reverse("manage-course-enrollment"),
-            {"action": "add_student", "course_run_id": course_run.pk, "user_id": student.pk},
+            {"action": "add_student", "course_run": course_run.pk, "user": student.pk},
         )
 
         self.assertTrue(
@@ -326,3 +333,154 @@ class CollegeManagementTests(TestCase):
         self.assertTrue(Enrollment.objects.filter(course_run=course_run, user=student).exists())
         detail = self.client.get(reverse("study-group-detail", args=[group.pk]))
         self.assertContains(detail, student.email)
+
+
+class ProfilePageTests(TestCase):
+    """Страница профиля: счётчики в истории и видимость ошибок форм."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.fixture = CourseFixture.create(email="profile@test.local")
+        ContentBlock.objects.create(
+            lesson=cls.fixture["lesson"], title="Материал", position=1, type="text"
+        )
+        cls.other = User.objects.create_user("occupied@test.local", "pass")
+
+    def test_history_carries_block_counts_for_the_shared_card(self):
+        self.client.force_login(self.fixture["user"])
+
+        response = self.client.get(reverse("profile"))
+
+        enrollment = response.context["history"][0]
+        self.assertEqual(enrollment.blocks_total, 1)
+        self.assertEqual(enrollment.blocks_done, 0)
+        self.assertContains(response, "Пройдено 0 из 1")
+
+    def test_duplicate_email_is_reported_in_summary_and_at_the_field(self):
+        self.client.force_login(self.fixture["user"])
+
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "action": "profile",
+                "first_name": "Имя",
+                "last_name": "Фамилия",
+                "middle_name": "",
+                "username": "profile-user",
+                "email": self.other.email,
+            },
+        )
+
+        # Дважды: сводка выше <h1> и сообщение у самого поля. Тексты обязаны
+        # совпадать дословно, иначе пользователь их не свяжет.
+        self.assertContains(response, "Этот email уже используется.", count=2)
+        self.assertContains(response, "Проверьте личные данные")
+        self.fixture["user"].refresh_from_db()
+        self.assertEqual(self.fixture["user"].email, "profile@test.local")
+
+
+class ManagementFormErrorTests(TestCase):
+    """Ошибки семи форм панели управления видны у полей, а не поверх страницы.
+
+    До этапа 4.10 любой промах отвечал редиректом и одной строкой в
+    messages: какое поле виновато — неизвестно, введённое — потеряно.
+    """
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser("management@test.local", "safe-password-123")
+        self.organization = Organization.objects.create(
+            name="Медколледж", short_name="МК", slug="mk-forms"
+        )
+        OrganizationMembership.objects.create(
+            user=self.admin,
+            organization=self.organization,
+            role=OrganizationMembership.Role.SYSTEM_ADMIN,
+            status="active",
+        )
+        self.client.force_login(self.admin)
+
+    def test_invalid_group_years_are_reported_at_the_field(self):
+        response = self.client.post(
+            reverse("add-study-group"),
+            {
+                "organization": self.organization.pk,
+                "name": "С-21",
+                "admission_year": 2030,
+                "graduation_year": 2026,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Год выпуска должен быть больше года поступления.", count=2)
+        # Введённое возвращается в форму: перенабирать не нужно.
+        self.assertContains(response, 'value="С-21"')
+        self.assertFalse(StudyGroup.objects.filter(name="С-21").exists())
+
+    def test_taken_username_is_reported_without_creating_the_user(self):
+        occupied = User.objects.create_user("occupied@test.local", "safe-password-123")
+        occupied.username = "ivanov"
+        occupied.save(update_fields=["username"])
+
+        response = self.client.post(
+            reverse("add-user"),
+            {
+                "organization": self.organization.pk,
+                "role": OrganizationMembership.Role.STUDENT,
+                "username": "ivanov",
+                "email": "new@test.local",
+                "password": "safe-password-123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Это имя пользователя уже занято.", count=2)
+        self.assertContains(response, "Укажите email, временный пароль и организацию.")
+        self.assertFalse(User.objects.filter(email="new@test.local").exists())
+
+    def test_wrong_file_type_is_reported_at_the_field(self):
+        response = self.client.post(
+            reverse("import-students"),
+            {
+                "organization": self.organization.pk,
+                "spreadsheet": SimpleUploadedFile("students.csv", b"group,full_name"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Файл должен быть в формате .xlsx.", count=2)
+
+
+class DocumentationNavigationTests(TestCase):
+    """Навигация по документации: текущий раздел и скрытие недоступного."""
+
+    def setUp(self):
+        self.teacher = User.objects.create_user("docs-teacher@test.local", "safe-password-123")
+        organization = Organization.objects.create(
+            name="Медколледж", short_name="МК", slug="docs-college"
+        )
+        OrganizationMembership.objects.create(
+            user=self.teacher,
+            organization=organization,
+            role=OrganizationMembership.Role.TEACHER,
+        )
+
+    def test_current_section_is_marked_and_management_is_hidden_from_teacher(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.get(reverse("documentation-courses"))
+
+        # Ссылка текущего раздела помечена aria-current: без этого раздел
+        # отличался бы только цветом подчёркивания.
+        self.assertContains(
+            response,
+            f'href="{reverse("documentation-courses")}" aria-current="page"',
+        )
+        self.assertNotContains(response, reverse("documentation-management"))
+
+    def test_administrator_sees_the_management_section(self):
+        admin = User.objects.create_superuser("docs-admin@test.local", "safe-password-123")
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse("documentation-home"))
+
+        self.assertContains(response, reverse("documentation-management"))

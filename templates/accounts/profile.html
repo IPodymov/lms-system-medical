@@ -1,10 +1,94 @@
 {% extends 'base.html' %}
+{% load static form_tags %}
+
+{% block title %}Профиль — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/learning-cards.css' %}{{ static_asset_version }}" />
+  <link rel="stylesheet" href="{% static 'css/pages/profile.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="page-header"><p class="eyebrow">Аккаунт</p><h1>Профиль</h1><p>Управляйте личными данными и следите за историей обучения.</p></section>
-<div class="profile-card">{% if user.avatar %}<img class="avatar-image" src="{{ user.avatar.url }}" alt="Аватар {{ user.get_full_name|default:user.email }}">{% else %}<div class="avatar">{{ user.email|first|upper }}</div>{% endif %}<div><h2>{{ user.get_full_name|default:user.email }}</h2><p>{{ user.email }}</p></div></div>
-<div class="editor-grid profile-grid">
-  <form class="form-card" method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="profile"><h2>Личные данные</h2>{{ profile_form.as_p }}<button type="submit">Сохранить изменения</button></form>
-  <form class="form-card" method="post">{% csrf_token %}<input type="hidden" name="action" value="password"><h2>Смена пароля</h2>{{ password_form.as_p }}<button type="submit">Обновить пароль</button></form>
+<div class="ui-stack">
+
+  {% comment %}
+    Сводки стоят выше <h1> и разделены по формам: на странице их две, и
+    «Проверьте форму» без уточнения не сказало бы, в какой именно ошибка.
+    Тег молчит, пока форма не отправлена и не признана невалидной.
+  {% endcomment %}
+  {% form_errors profile_form "Проверьте личные данные" %}
+  {% form_errors password_form "Проверьте смену пароля" %}
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">Аккаунт</p>
+    <h1 class="page-head__title">Профиль</h1>
+    <p class="page-head__subtitle">Управляйте личными данными и следите за историей обучения.</p>
+  </header>
+
+  <div class="ui-card profile-identity">
+    <span class="ui-avatar ui-avatar--lg">
+      {% if user.avatar %}
+        <img src="{{ user.avatar.url }}" alt="Аватар {{ user.get_full_name|default:user.email }}">
+      {% else %}
+        {{ user.email|first|upper }}
+      {% endif %}
+    </span>
+    <div class="profile-identity__text">
+      <h2 class="profile-identity__name">{{ user.get_full_name|default:user.email }}</h2>
+      <p class="profile-identity__email">{{ user.email }}</p>
+    </div>
+  </div>
+
+  <div class="profile-forms">
+    <form class="ui-card ui-stack profile-form" method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="profile">
+      <h2 class="section-head__title">Личные данные</h2>
+      {% form_field profile_form.last_name autocomplete="family-name" %}
+      {% form_field profile_form.first_name autocomplete="given-name" %}
+      {% form_field profile_form.middle_name autocomplete="additional-name" %}
+      {% form_field profile_form.username autocomplete="username" %}
+      {% form_field profile_form.email autocomplete="email" %}
+      {% form_field profile_form.avatar %}
+      <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Сохранить изменения</button>
+    </form>
+
+    <form class="ui-card ui-stack profile-form" method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="password">
+      <h2 class="section-head__title">Смена пароля</h2>
+      {% form_field password_form.old_password autocomplete="current-password" %}
+      {% form_field password_form.new_password1 autocomplete="new-password" %}
+      {% form_field password_form.new_password2 autocomplete="new-password" %}
+      <button class="ui-btn ui-btn--secondary" type="submit" data-submit-once>Обновить пароль</button>
+    </form>
+  </div>
+
+  <section class="ui-stack" aria-labelledby="history-title">
+    <div class="section-head">
+      <h2 class="section-head__title" id="history-title">История обучения</h2>
+      <a class="ui-btn ui-btn--ghost ui-btn--sm" href="{% url 'my-courses' %}">Все курсы →</a>
+    </div>
+
+    {% if history %}
+      {% comment %}
+        Тот же партиал, что на дашборде и в «Моих курсах». Раньше история
+        была четвёртой самостоятельной вёрсткой одной и той же карточки
+        записи — со своей полосой прогресса и своими отступами.
+      {% endcomment %}
+      <div class="enrollment-grid">
+        {% for enrollment in history %}
+          {% include 'components/enrollment_card.html' with heading_level=3 %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="ui-empty">
+        <h3 class="ui-empty__title">История пока пуста</h3>
+        <p class="ui-empty__text">После записи на курс здесь появится ваш прогресс.</p>
+        <a class="ui-btn ui-btn--primary" href="{% url 'course-catalog' %}">Открыть каталог</a>
+      </div>
+    {% endif %}
+  </section>
+
 </div>
-<section class="history-section"><div class="section-heading"><h2>История обучения</h2><a href="{% url 'my-courses' %}">Все курсы →</a></div><div class="course-list">{% for enrollment in history %}<a class="learning-card" href="{% url 'course-learning' enrollment.id %}"><div><p class="card-kicker">{{ enrollment.get_status_display }}</p><h3>{{ enrollment.course_run.course.title }}</h3><p>{{ enrollment.course_run.title }}</p></div><div class="card-progress"><span>{{ enrollment.progress_percent|floatformat:0 }}%</span><div class="mini-progress"><i style="width: {{ enrollment.progress_percent|floatformat:0 }}%"></i></div></div></a>{% empty %}<div class="empty-state"><h2>История пока пуста</h2><p>После записи на курс здесь появится ваш прогресс.</p><a class="button-link" href="{% url 'course-catalog' %}">Открыть каталог</a></div>{% endfor %}</div></section>
 {% endblock %}

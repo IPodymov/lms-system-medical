@@ -1,0 +1,266 @@
+/* =========================================================================
+   Конструктор курса
+   -------------------------------------------------------------------------
+   Самая плотная страница проекта: раздел → тема → блок, три уровня
+   вложенности карточек. Вложенность показана отступом и фоном, а не рамкой
+   внутри рамки — иначе на третьем уровне рамки сливаются в решётку.
+   ========================================================================= */
+
+.builder-layout {
+  display: grid;
+  gap: var(--density-section-gap);
+  align-items: start;
+}
+
+/* Боковая колонка появляется, когда холсту остаётся не меньше 640px:
+   уже него карточка темы с блоками внутри становится нечитаемой. */
+@media (min-width: 1024px) {
+  .builder-layout {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+
+  .builder-sidebar {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-16));
+  }
+}
+
+.builder-canvas {
+  min-width: 0;
+}
+
+.builder-sidebar__copy,
+.builder-topic__description {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.builder-sidebar__hint {
+  margin: 0;
+  padding: var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+  line-height: var(--leading-normal);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+/* -------------------------------------------------------------------------
+   Полоса «раздел → тема → блок»
+   ------------------------------------------------------------------------- */
+
+.builder-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: builder-flow;
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}
+
+.builder-flow li {
+  counter-increment: builder-flow;
+}
+
+/* Номер и стрелка рисуются генерируемым содержимым: это оформление
+   порядка, а не текст, и в разметке ему делать нечего. */
+.builder-flow li::before {
+  content: counter(builder-flow) ". ";
+  font-weight: var(--weight-semibold);
+}
+
+.builder-flow li:not(:last-child)::after {
+  content: " →";
+}
+
+/* -------------------------------------------------------------------------
+   Раздел и тема
+   ------------------------------------------------------------------------- */
+
+.builder-topics {
+  min-width: 0;
+}
+
+.builder-topic {
+  background: var(--color-surface-sunken);
+}
+
+.builder-topic.is-dragging {
+  opacity: 0.5;
+}
+
+.builder-topic__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-8) var(--space-12);
+  align-items: start;
+}
+
+.builder-topic__title {
+  min-width: 0;
+}
+
+/* Действия переносятся под заголовок на узком экране: кнопки перемещения
+   должны оставаться крупными, а не сжиматься до нечитаемых. */
+.builder-topic__actions {
+  grid-column: 2;
+}
+
+@media (min-width: 768px) {
+  .builder-topic__head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .builder-topic__actions {
+    grid-column: auto;
+  }
+}
+
+/* Ручка перетаскивания — только для указателя, поэтому она aria-hidden и
+   не участвует в порядке Tab. Клавиатурный путь — кнопки «вверх / вниз». */
+.builder-topic__handle,
+.builder-block__handle {
+  color: var(--color-text-faint);
+  cursor: grab;
+  font-size: var(--text-18);
+  line-height: 1;
+}
+
+.builder-move {
+  display: flex;
+  gap: var(--space-4);
+}
+
+/* -------------------------------------------------------------------------
+   Учебный блок
+   ------------------------------------------------------------------------- */
+
+.builder-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.builder-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-12);
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.builder-block.is-dragging {
+  opacity: 0.5;
+}
+
+.builder-block__text {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.builder-block__text small {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+}
+
+/* Кнопки переносятся под название, когда строка не помещается: они не
+   должны сжиматься до нечитаемых. */
+.builder-block__actions {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Раскрытая форма редактирования ложится под строкой на всю её ширину —
+   поэтому аккордеон стоит соседом кнопок, а не внутри них. */
+.builder-block__edit {
+  flex: 1 1 100%;
+}
+
+.builder-empty-hint {
+  margin: 0;
+  padding: var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  background: var(--color-surface-sunken);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+/* -------------------------------------------------------------------------
+   Формы добавления блока
+   ------------------------------------------------------------------------- */
+
+.builder-block-forms {
+  display: grid;
+  gap: var(--space-16);
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .builder-block-forms {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
+}
+
+.builder-form__title {
+  margin: 0;
+  font-size: var(--text-16);
+  font-weight: var(--weight-semibold);
+}
+
+/* Ссылка на создание теста стоит рядом с двумя формами и должна читаться
+   как равноправный третий вариант, а не как подпись под ними. */
+.builder-quiz-cta {
+  gap: var(--space-4);
+  justify-content: center;
+  background: var(--color-primary-surface);
+  border-color: transparent;
+  color: var(--color-on-primary-surface);
+}
+
+/* -------------------------------------------------------------------------
+   Нижние карточки: ссылки и настройки
+   ------------------------------------------------------------------------- */
+
+.builder-bottom {
+  display: grid;
+  gap: var(--density-section-gap);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .builder-bottom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.builder-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.builder-links a {
+  color: var(--color-primary);
+  font-weight: var(--weight-medium);
+}
+
+.builder-links small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}

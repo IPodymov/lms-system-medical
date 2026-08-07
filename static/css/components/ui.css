@@ -779,8 +779,13 @@
 }
 
 /* Числовые колонки выравниваются по правому краю и получают табличные
-   цифры — иначе столбец процентов невозможно сравнивать взглядом. */
-.ui-table__num {
+   цифры — иначе столбец процентов невозможно сравнивать взглядом.
+
+   Селектор обязан включать тег: правило `.ui-table th, .ui-table td`
+   специфичнее одиночного класса, и без этого выравнивание не применялось
+   вовсе — что и обнаружилось на первой же настоящей таблице (этап 4.9). */
+.ui-table th.ui-table__num,
+.ui-table td.ui-table__num {
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -992,6 +997,91 @@
   color: var(--color-text-muted);
   font-size: var(--text-13);
   font-variant-numeric: tabular-nums;
+}
+
+/* Пара полей в строку: даты начала и окончания, годы поступления и
+   выпуска. Встречается на трёх страницах, поэтому живёт здесь. */
+.ui-field-row {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
+/* -------------------------------------------------------------------------
+   Группа полей
+
+   fieldset остаётся блочным: legend внутри flex- или grid-контейнера
+   раскладывается по-разному в разных браузерах, поэтому вся раскладка
+   живёт во вложенном __body.
+   ------------------------------------------------------------------------- */
+
+.ui-fieldset {
+  /* Браузер задаёт fieldset собственные margin и padding, а легаси-слой
+     добавлял к ним свои. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* float — не украшение, а единственный способ вынуть legend из выреза в
+   рамке: по умолчанию он рендерится поверх верхней границы и наезжает на
+   неё, и display: block этого не отменяет. Плавающий блок закрывает
+   clear на __body. */
+.ui-fieldset__legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-8);
+  font-size: var(--text-14);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-fieldset__body {
+  clear: both;
+}
+
+/* -------------------------------------------------------------------------
+   Строка ссылки для записи на курс
+
+   Компонент общий для страницы группы и панели управления, поэтому живёт
+   здесь, а не в pages/*.css одной из них: иначе на второй странице
+   разметка осталась бы без стилей.
+   ------------------------------------------------------------------------- */
+
+.ui-link-row {
+  gap: var(--space-12);
+}
+
+@media (min-width: 768px) {
+  .ui-link-row {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.ui-link-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-link-row__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-13);
+}
+
+/* Адрес ссылки длинный и не обязан помещаться в строку: перенос по любому
+   символу лучше, чем горизонтальная прокрутка всей страницы. */
+.ui-link-row__url {
+  overflow-wrap: anywhere;
+  color: var(--color-primary);
+  font-size: var(--text-13);
+}
+
+.ui-link-row__state {
+  flex: 0 0 auto;
 }
 
 /* -------------------------------------------------------------------------

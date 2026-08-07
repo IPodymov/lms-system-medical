@@ -1,1 +1,72 @@
-{% extends 'base.html' %}{% block content %}<h1>Журнал: {{ run.title }}</h1><div class="table-wrap"><table><tr><th>Студент</th><th>Прогресс</th><th>Итог</th></tr>{% for e in enrollments %}<tr><td>{{ e.user }}</td><td>{{ e.progress_percent }}%</td><td>{{ e.final_score|default:'—' }}</td></tr>{% endfor %}</table></div>{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Журнал: {{ run.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/management.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% comment %}
+  Широкая раскладка и плотный режим: страница целиком состоит из таблицы, и
+  каждая лишняя точка отступа — это строка, не поместившаяся на экран.
+  Токены плотности живут в tokens.css, здесь только включение.
+{% endcomment %}
+{% block main_attrs %} data-width="wide" data-density="compact"{% endblock %}
+
+{% block content %}
+<div class="ui-stack">
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">{{ run.course.title }}</p>
+    <h1 class="page-head__title">Журнал: {{ run.title }}</h1>
+    <p class="page-head__subtitle">Прогресс и итоговые баллы слушателей потока.</p>
+  </header>
+
+  {% if enrollments %}
+    <div class="ui-table-wrap">
+      <table class="ui-table">
+        <caption class="ui-visually-hidden">Журнал успеваемости потока «{{ run.title }}»</caption>
+        <thead>
+          <tr>
+            <th scope="col">Студент</th>
+            <th scope="col">Статус</th>
+            <th scope="col" class="ui-table__num">Прогресс</th>
+            <th scope="col" class="ui-table__num">Итог</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in enrollments %}
+            <tr>
+              <td>
+                {{ e.user.get_full_name|default:e.user.email }}
+                <span class="ui-table__cell-sub">{{ e.user.email }}</span>
+              </td>
+              <td>
+                {% if e.status == 'completed' %}
+                  <span class="ui-badge ui-badge--success">{{ e.get_status_display }}</span>
+                {% elif e.status == 'expelled' %}
+                  <span class="ui-badge ui-badge--danger">{{ e.get_status_display }}</span>
+                {% elif e.status == 'invited' %}
+                  <span class="ui-badge ui-badge--neutral">{{ e.get_status_display }}</span>
+                {% else %}
+                  <span class="ui-badge ui-badge--info">{{ e.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="ui-table__num">{{ e.progress_percent|floatformat:0 }}%</td>
+              <td class="ui-table__num">{{ e.final_score|default:'—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="ui-empty">
+      <h2 class="ui-empty__title">На поток пока никто не записан</h2>
+      <p class="ui-empty__text">Как только появятся слушатели, их прогресс и оценки будут здесь.</p>
+      <a class="ui-btn ui-btn--secondary" href="{% url 'course-detail' run.course.id %}">Открыть курс</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

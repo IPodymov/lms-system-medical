@@ -1,1 +1,52 @@
-<div class="link-list">{% for enrollment_link in enrollment_links %}<article class="link-row"><div><strong>{{ enrollment_link.course_run.course.title }}</strong><span>{{ enrollment_link.course_run.title }}{% if enrollment_link.label %} · {{ enrollment_link.label }}{% endif %}</span><a href="{% url 'enroll-by-link' enrollment_link.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'enroll-by-link' enrollment_link.id %}</a></div><div>{% if enrollment_link.is_active %}<span class="status-pill">Активна</span><form method="post" action="{% url 'deactivate-course-enrollment-link' enrollment_link.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ enrollment_links_next_url }}"><button class="table-action-danger">Отключить</button></form>{% else %}<span class="status-pill is-muted">Отключена</span>{% endif %}</div></article>{% empty %}<p class="empty-inline">{{ enrollment_links_empty_message }}</p>{% endfor %}</div>{% if enrollment_links.paginator.num_pages > 1 %}<nav class="pagination" aria-label="Страницы ссылок для записи">{% if enrollment_links.has_previous %}<a class="button-secondary" href="?page={{ enrollment_links.previous_page_number }}{{ enrollment_links_page_anchor }}">Назад</a>{% endif %}<span class="pagination-status">Страница {{ enrollment_links.number }} из {{ enrollment_links.paginator.num_pages }}</span>{% if enrollment_links.has_next %}<a class="button-secondary" href="?page={{ enrollment_links.next_page_number }}{{ enrollment_links_page_anchor }}">Далее</a>{% endif %}</nav>{% endif %}
+{% comment %}
+  Список ссылок для записи на курс. Включается страницей группы и панелью
+  управления.
+
+  Параметры:
+    enrollment_links          — страница Paginator'а со ссылками
+    enrollment_links_next_url — куда вернуться после отключения ссылки
+    enrollment_links_empty_message — текст пустого состояния
+    enrollment_links_page_anchor   — якорь для пагинации (необязательно)
+
+  Партиал общий, поэтому оформление у него компонентное: страница управления
+  мигрирует на этапе 4.10, и переписывать список второй раз не придётся.
+{% endcomment %}
+<div class="ui-stack">
+  {% for enrollment_link in enrollment_links %}
+    <article class="ui-card ui-link-row">
+      <div class="ui-link-row__text">
+        <strong>{{ enrollment_link.course_run.course.title }}</strong>
+        <span class="ui-link-row__meta">{{ enrollment_link.course_run.title }}{% if enrollment_link.label %} · {{ enrollment_link.label }}{% endif %}</span>
+        <a class="ui-link-row__url" href="{% url 'enroll-by-link' enrollment_link.id %}">{{ request.scheme }}://{{ request.get_host }}{% url 'enroll-by-link' enrollment_link.id %}</a>
+      </div>
+      <div class="ui-cluster ui-link-row__state">
+        {% if enrollment_link.is_active %}
+          <span class="ui-badge ui-badge--success">Активна</span>
+          <form method="post" action="{% url 'deactivate-course-enrollment-link' enrollment_link.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ enrollment_links_next_url }}">
+            <button class="ui-btn ui-btn--danger-quiet ui-btn--sm" type="submit" data-submit-once>Отключить</button>
+          </form>
+        {% else %}
+          <span class="ui-badge ui-badge--neutral">Отключена</span>
+        {% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="ui-empty ui-empty--inline">
+      <p class="ui-empty__text">{{ enrollment_links_empty_message }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% if enrollment_links.paginator.num_pages > 1 %}
+<nav class="ui-pagination" aria-label="Страницы ссылок для записи">
+  {% if enrollment_links.has_previous %}
+    <a class="ui-page-link" href="?page={{ enrollment_links.previous_page_number }}{{ enrollment_links_page_anchor }}">Назад</a>
+  {% endif %}
+  <span class="ui-pagination__status">Страница {{ enrollment_links.number }} из {{ enrollment_links.paginator.num_pages }}</span>
+  {% if enrollment_links.has_next %}
+    <a class="ui-page-link" href="?page={{ enrollment_links.next_page_number }}{{ enrollment_links_page_anchor }}">Далее</a>
+  {% endif %}
+</nav>
+{% endif %}

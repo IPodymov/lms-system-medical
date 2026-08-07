@@ -1,0 +1,28 @@
+{% comment %}
+  Кнопки «вверх / вниз» — альтернатива перетаскиванию.
+
+  Параметры:
+    action     — «move_lesson» или «move_block»
+    id_field   — имя поля с идентификатором («lesson_id» / «block_id»)
+    item_id    — сам идентификатор
+    label      — что двигаем, для aria-label: «тему «Строение сердца»»
+    is_first   — True, если элемент уже первый (кнопка «вверх» недоступна)
+    is_last    — True, если последний
+
+  WCAG 2.5.7 требует, чтобы действие, доступное перетаскиванием, можно было
+  выполнить и одним нажатием. Это обычная форма: работает без JavaScript,
+  с клавиатуры и на сенсорном экране. Перетаскивание при этом остаётся.
+{% endcomment %}
+<form class="builder-move" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="{{ id_field }}" value="{{ item_id }}">
+  <button class="ui-btn ui-btn--secondary ui-btn--sm ui-btn--icon" type="submit" name="direction" value="up"
+          aria-label="Переместить {{ label }} выше"{% if is_first %} disabled{% endif %}>
+    <span aria-hidden="true">↑</span>
+  </button>
+  <button class="ui-btn ui-btn--secondary ui-btn--sm ui-btn--icon" type="submit" name="direction" value="down"
+          aria-label="Переместить {{ label }} ниже"{% if is_last %} disabled{% endif %}>
+    <span aria-hidden="true">↓</span>
+  </button>
+</form>

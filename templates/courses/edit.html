@@ -1,81 +1,225 @@
 {% extends 'base.html' %}
-{% block title %}Программа курса | {{ course.title }}{% endblock %}
+{% load static %}
+
+{% block title %}Программа курса — {{ course.title }} — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/course-builder.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block main_attrs %} data-width="wide"{% endblock %}
+
 {% block content %}
-<section class="builder-header">
-  <div><p class="eyebrow">Программа курса</p><h1>{{ course.title }}</h1><p>Соберите путь слушателя: сначала добавьте раздел, в раздел добавьте темы, а в каждую тему - лекции, файлы и тесты.</p></div>
-  <div class="builder-actions">{% if active_run %}<span class="course-open-status">Запись открыта</span>{% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="open_enrollment"><button>Открыть курс для записи</button></form>{% endif %}{% if active_run %}{% if is_editor_enrolled %}<span class="course-open-status">Вы уже в курсе</span>{% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="enroll_editor"><button class="button-secondary">Добавить меня в курс</button></form>{% endif %}{% endif %}<a class="button-link" href="{% url 'course-detail' course.id %}">{% if active_run %}Открыть курс{% else %}Открыть черновик{% endif %}</a></div>
-</section>
+<div class="ui-stack">
 
-<section class="builder-flow" aria-label="Структура программы"><span>1. Раздел</span><i aria-hidden="true">→</i><span>2. Тема</span><i aria-hidden="true">→</i><span>3. Учебный блок</span></section>
+  <div class="section-head">
+    <header class="page-head">
+      <p class="page-head__eyebrow">Программа курса</p>
+      <h1 class="page-head__title">{{ course.title }}</h1>
+      <p class="page-head__subtitle">Соберите путь слушателя: сначала добавьте раздел, в раздел добавьте темы, а в каждую тему - лекции, файлы и тесты.</p>
+    </header>
 
-<div class="builder-layout">
-  <aside class="builder-sidebar card">
-    <p class="eyebrow">Следующий шаг</p><h2>Добавьте раздел</h2><p class="builder-sidebar-copy">Раздел объединяет несколько тем. Например: «Модуль 1. Анатомия».</p>
-    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_section"><label>Название раздела<input name="section_title" required placeholder="Модуль 1. Введение"></label><label>Краткое описание <small>необязательно</small><textarea name="section_description" rows="3" placeholder="Что будет внутри этого раздела"></textarea></label><button>Добавить раздел</button></form>
-    <div class="builder-sidebar-hint"><strong>Что дальше?</strong><span>Откройте созданный раздел справа и добавьте в него первую тему.</span></div>
-  </aside>
+    <div class="ui-cluster">
+      {% if active_run %}
+        <span class="ui-badge ui-badge--success">Запись открыта</span>
+        {% if is_editor_enrolled %}
+          <span class="ui-badge ui-badge--neutral">Вы уже в курсе</span>
+        {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="enroll_editor">
+            <button class="ui-btn ui-btn--secondary" type="submit" data-submit-once>Добавить меня в курс</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="open_enrollment">
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Открыть курс для записи</button>
+        </form>
+      {% endif %}
+      <a class="ui-btn ui-btn--ghost" href="{% url 'course-detail' course.id %}">{% if active_run %}Открыть курс{% else %}Открыть черновик{% endif %}</a>
+    </div>
+  </div>
 
-  <section class="builder-canvas">
-    {% for section in sections %}
-      <section class="builder-section">
-        <div class="builder-section-heading"><div><span>Раздел {{ forloop.counter }}</span><h2>{{ section.title }}</h2>{% if section.description %}<p>{{ section.description }}</p>{% endif %}</div><small>{{ section.lessons.all|length }} тем</small></div>
-        <details class="add-topic" {% if not section.lessons.all %}open{% endif %}>
-          <summary><span>+</span> Добавить тему в раздел</summary>
-          <form method="post" class="topic-create-form">{% csrf_token %}<input type="hidden" name="action" value="add_lesson"><input type="hidden" name="section_title" value="{{ section.title }}"><label>Название темы<input name="lesson_title" required placeholder="Например, Строение сердца"></label><label>Краткое описание <small>необязательно</small><textarea name="lesson_description" rows="2" placeholder="Что слушатель изучит в этой теме"></textarea></label><button>Добавить тему</button></form>
-        </details>
-        <div class="topic-dropzone" data-lesson-dropzone data-sort-form="lesson-sort-{{ section.id }}">
-          {% for lesson in section.lessons.all %}
-            <article class="topic-card" draggable="true" data-lesson-id="{{ lesson.id }}"><input form="lesson-sort-{{ section.id }}" type="hidden" name="lesson_id" value="{{ lesson.id }}">
-              <header><div class="topic-heading"><span class="topic-drag-handle" data-drag-handle title="Переместить тему">⠿</span><div><span class="topic-kicker">Тема {{ forloop.counter }}</span><h3>{{ lesson.title }}</h3>{% if lesson.description %}<p>{{ lesson.description }}</p>{% endif %}</div></div><a class="text-action" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест</a></header>
-              <details class="edit-details"><summary>Редактировать тему</summary><form method="post" class="edit-form">{% csrf_token %}<input type="hidden" name="action" value="edit_lesson"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><label>Название темы<input name="lesson_title" required value="{{ lesson.title }}"></label><label>Описание<textarea name="lesson_description" rows="2">{{ lesson.description }}</textarea></label><button class="button-secondary">Сохранить тему</button></form></details>
-              <div class="block-dropzone" data-block-dropzone data-sort-form="block-sort-{{ lesson.id }}">{% for block in lesson.blocks.all %}<div class="content-block" draggable="true" data-block-id="{{ block.id }}"><input form="block-sort-{{ lesson.id }}" type="hidden" name="block_id" value="{{ block.id }}"><span class="drag-handle" data-drag-handle title="Переместить блок">⠿</span><div><strong>{{ block.title }}</strong><small>{{ block.get_type_display }}</small></div><details class="block-edit-details"><summary>Редактировать</summary><form method="post" enctype="multipart/form-data" class="edit-form">{% csrf_token %}<input type="hidden" name="action" value="edit_block"><input type="hidden" name="block_id" value="{{ block.id }}"><label>Название блока<input name="block_title" required value="{{ block.title }}"></label>{% if block.type == 'text' %}<label>Содержание<textarea name="text_body" required rows="5">{{ block.text_content.body }}</textarea></label>{% elif block.type == 'file' %}<label>Комментарий<textarea name="material_description" rows="3">{{ block.file_content.description }}</textarea></label><label>Заменить файл <small>необязательно</small><input type="file" name="file"></label>{% endif %}<button class="button-secondary">Сохранить блок</button></form></details>{% if block.quiz %}<a href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>{% endif %}<button class="button-danger" type="submit" form="delete-block-{{ block.id }}" onclick="return confirm('Удалить блок без возможности восстановления?')">Удалить</button></div><form id="delete-block-{{ block.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="delete_block"><input type="hidden" name="delete_block_id" value="{{ block.id }}"></form>{% empty %}<p class="dropzone-empty">В теме пока нет блоков. Выберите тип материала ниже.</p>{% endfor %}</div>
-              <form id="block-sort-{{ lesson.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="reorder_blocks"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"></form>
-              <details class="add-block" {% if not lesson.blocks.all %}open{% endif %}><summary><span>+</span> Добавить учебный блок</summary><p class="add-block-intro">Блок - это единица обучения внутри темы. Выберите подходящий тип.</p><div class="block-forms"><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_text"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Текст или лекция</h4><label>Название блока<input name="text_title" required placeholder="Основные понятия"></label><label>Содержание<textarea name="text_body" required rows="4" placeholder="Введите текст для слушателей"></textarea></label><button>Добавить текст</button></form><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="add_material"><input type="hidden" name="lesson_id" value="{{ lesson.id }}"><h4>Файл или материал</h4><label>Название блока<input name="material_title" required placeholder="Атлас строения сердца"></label><label>Комментарий <small>необязательно</small><textarea name="material_description" rows="2"></textarea></label><label>Файл<input type="file" name="file" required></label><button>Загрузить файл</button></form><a class="quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}"><span>Проверка знаний</span><strong>Создать тест для темы →</strong></a></div></details>
-            </article>
-          {% endfor %}
+  <ol class="builder-flow" aria-label="Структура программы">
+    <li>Раздел</li>
+    <li>Тема</li>
+    <li>Учебный блок</li>
+  </ol>
+
+  <div class="builder-layout">
+
+    <aside class="ui-card ui-stack builder-sidebar" aria-labelledby="add-section-title">
+      <div>
+        <p class="page-head__eyebrow">Следующий шаг</p>
+        <h2 class="section-head__title" id="add-section-title">Добавьте раздел</h2>
+        <p class="builder-sidebar__copy">Раздел объединяет несколько тем. Например: «Модуль 1. Анатомия».</p>
+      </div>
+      <form class="ui-stack" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_section">
+        <div class="ui-field">
+          <label class="ui-label" for="section-title">Название раздела</label>
+          <input class="ui-input" id="section-title" name="section_title" required placeholder="Модуль 1. Введение">
         </div>
-        <form id="lesson-sort-{{ section.id }}" method="post">{% csrf_token %}<input type="hidden" name="action" value="reorder_lessons"><input type="hidden" name="section_id" value="{{ section.id }}"></form>
-      </section>
-    {% empty %}<section class="empty-state builder-empty"><p class="eyebrow">Программа пуста</p><h2>Начните с первого раздела</h2><p>После создания раздела вы сможете добавить в него тему, а затем наполнить тему учебными блоками.</p></section>{% endfor %}
-  </section>
-</div>
+        <div class="ui-field">
+          <label class="ui-label" for="section-description">Краткое описание <span class="ui-label__optional">— необязательно</span></label>
+          <textarea class="ui-textarea" id="section-description" name="section_description" rows="3" placeholder="Что будет внутри этого раздела"></textarea>
+        </div>
+        <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить раздел</button>
+      </form>
+      <p class="builder-sidebar__hint"><strong>Что дальше?</strong> <span>Откройте созданный раздел справа и добавьте в него первую тему.</span></p>
+    </aside>
 
-<div class="editor-bottom-grid">
-  <section class="card"><p class="eyebrow">Общие материалы</p><h2>Полезные ссылки к курсу</h2><p>Эти материалы доступны всему курсу, а не отдельной теме.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add_material_link"><label>Название<input name="link_title" required placeholder="Клинические рекомендации"></label><label>Ссылка<input type="url" name="link_url" required placeholder="https://"></label><label>Комментарий <small>необязательно</small><textarea name="link_description" rows="2"></textarea></label><button>Добавить ссылку</button></form><ul class="link-list">{% for item in material_links %}<li><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }} ↗</a>{% if item.description %}<small>{{ item.description }}</small>{% endif %}</li>{% empty %}<li>Ссылок пока нет.</li>{% endfor %}</ul></section>
-  <section class="card"><p class="eyebrow">Настройки</p><h2>Карточка и сроки курса</h2><form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="action" value="save_course"><label>Наименование<input name="title" required value="{{ course.title }}"></label><label>Краткое описание<input name="short_description" value="{{ course.short_description }}"></label><label>Описание<textarea name="description" rows="4">{{ course.description }}</textarea></label><label>Обложка<input type="file" name="cover" accept="image/*"></label><label>Статус<select name="status">{% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button>Сохранить изменения</button></form><form method="post" class="schedule-form">{% csrf_token %}<input type="hidden" name="action" value="save_schedule"><h3>Сроки обучения</h3><p>Можно изменить в любой момент.</p><div class="course-date-fields"><label>Начало<input type="date" name="course_start" required value="{{ schedule_run.start_at|date:'Y-m-d' }}"></label><label>Окончание<input type="date" name="course_end" required value="{{ schedule_run.end_at|date:'Y-m-d' }}"></label></div><button class="button-secondary">Сохранить сроки</button></form></section>
+    <div class="ui-stack builder-canvas">
+      {% for section in sections %}
+        <section class="ui-card ui-stack builder-section" aria-labelledby="section-{{ section.id }}-title">
+          <div class="section-head">
+            <div>
+              <p class="page-head__eyebrow">Раздел {{ forloop.counter }}</p>
+              <h2 class="section-head__title" id="section-{{ section.id }}-title">{{ section.title }}</h2>
+              {% if section.description %}<p class="builder-topic__description">{{ section.description }}</p>{% endif %}
+            </div>
+            <span class="ui-badge ui-badge--neutral">{{ section.lessons.all|length }} тем</span>
+          </div>
+
+          <details class="ui-accordion" {% if not section.lessons.all %}open{% endif %}>
+            <summary>Добавить тему в раздел</summary>
+            <div class="ui-accordion__body">
+              <form class="ui-stack" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_lesson">
+                <input type="hidden" name="section_title" value="{{ section.title }}">
+                <div class="ui-field">
+                  <label class="ui-label" for="lesson-title-new-{{ section.id }}">Название темы</label>
+                  <input class="ui-input" id="lesson-title-new-{{ section.id }}" name="lesson_title" required placeholder="Например, Строение сердца">
+                </div>
+                <div class="ui-field">
+                  <label class="ui-label" for="lesson-description-new-{{ section.id }}">Краткое описание <span class="ui-label__optional">— необязательно</span></label>
+                  <textarea class="ui-textarea" id="lesson-description-new-{{ section.id }}" name="lesson_description" rows="2" placeholder="Что слушатель изучит в этой теме"></textarea>
+                </div>
+                <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить тему</button>
+              </form>
+            </div>
+          </details>
+
+          <div class="ui-stack builder-topics" data-lesson-dropzone data-sort-form="lesson-sort-{{ section.id }}">
+            {% for lesson in section.lessons.all %}
+              {% include 'components/builder_lesson.html' with lesson=lesson course=course number=forloop.counter is_first=forloop.first is_last=forloop.last %}
+            {% endfor %}
+          </div>
+
+          <form id="lesson-sort-{{ section.id }}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reorder_lessons">
+            <input type="hidden" name="section_id" value="{{ section.id }}">
+          </form>
+        </section>
+      {% empty %}
+        <div class="ui-empty">
+          <p class="page-head__eyebrow">Программа пуста</p>
+          <h2 class="ui-empty__title">Начните с первого раздела</h2>
+          <p class="ui-empty__text">После создания раздела вы сможете добавить в него тему, а затем наполнить тему учебными блоками.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="builder-bottom">
+    <section class="ui-card ui-stack" aria-labelledby="links-title">
+      <div>
+        <p class="page-head__eyebrow">Общие материалы</p>
+        <h2 class="section-head__title" id="links-title">Полезные ссылки к курсу</h2>
+        <p class="builder-topic__description">Эти материалы доступны всему курсу, а не отдельной теме.</p>
+      </div>
+      <form class="ui-stack" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_material_link">
+        <div class="ui-field">
+          <label class="ui-label" for="link-title">Название</label>
+          <input class="ui-input" id="link-title" name="link_title" required placeholder="Клинические рекомендации">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="link-url">Ссылка</label>
+          <input class="ui-input" id="link-url" type="url" name="link_url" required placeholder="https://">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="link-description">Комментарий <span class="ui-label__optional">— необязательно</span></label>
+          <textarea class="ui-textarea" id="link-description" name="link_description" rows="2"></textarea>
+        </div>
+        <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить ссылку</button>
+      </form>
+
+      <ul class="builder-links">
+        {% for item in material_links %}
+          <li>
+            <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }} ↗</a>
+            {% if item.description %}<small>{{ item.description }}</small>{% endif %}
+          </li>
+        {% empty %}
+          <li class="builder-empty-hint">Ссылок пока нет.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="ui-card ui-stack" aria-labelledby="settings-title">
+      <div>
+        <p class="page-head__eyebrow">Настройки</p>
+        <h2 class="section-head__title" id="settings-title">Карточка и сроки курса</h2>
+      </div>
+
+      <form class="ui-stack" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_course">
+        <div class="ui-field">
+          <label class="ui-label" for="course-title">Наименование</label>
+          <input class="ui-input" id="course-title" name="title" required value="{{ course.title }}">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="course-short-description">Краткое описание</label>
+          <input class="ui-input" id="course-short-description" name="short_description" value="{{ course.short_description }}">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="course-description">Описание</label>
+          <textarea class="ui-textarea" id="course-description" name="description" rows="4">{{ course.description }}</textarea>
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="course-cover">Обложка</label>
+          <input class="ui-input" id="course-cover" type="file" name="cover" accept="image/*">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="course-status">Статус</label>
+          <select class="ui-select" id="course-status" name="status">
+            {% for value, label in course.Status.choices %}<option value="{{ value }}" {% if course.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Сохранить изменения</button>
+      </form>
+
+      <form class="ui-stack" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_schedule">
+        <h3 class="builder-form__title">Сроки обучения</h3>
+        <p class="builder-topic__description">Можно изменить в любой момент.</p>
+        <div class="ui-field-row">
+          <div class="ui-field">
+            <label class="ui-label" for="course-start">Начало</label>
+            <input class="ui-input" id="course-start" type="date" name="course_start" required value="{{ schedule_run.start_at|date:'Y-m-d' }}">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="course-end">Окончание</label>
+            <input class="ui-input" id="course-end" type="date" name="course_end" required value="{{ schedule_run.end_at|date:'Y-m-d' }}">
+          </div>
+        </div>
+        <button class="ui-btn ui-btn--secondary" type="submit" data-submit-once>Сохранить сроки</button>
+      </form>
+    </section>
+  </div>
+
 </div>
-<script>
-function enableSorting(zoneSelector, itemSelector) {
-  document.querySelectorAll(zoneSelector).forEach((zone) => {
-    let dragged;
-    let dragFromHandle = false;
-    zone.addEventListener('pointerdown', (event) => {
-      dragFromHandle = Boolean(event.target.closest('[data-drag-handle]'));
-    });
-    zone.addEventListener('dragstart', (event) => {
-      if (!dragFromHandle) { event.preventDefault(); return; }
-      dragged = event.target.closest(itemSelector);
-      if (dragged) { dragged.classList.add('is-dragging'); event.dataTransfer.effectAllowed = 'move'; }
-    });
-    zone.addEventListener('dragover', (event) => {
-      event.preventDefault();
-      const target = event.target.closest(itemSelector);
-      if (dragged && target && target !== dragged) {
-        const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
-        zone.insertBefore(dragged, before ? target : target.nextSibling);
-      }
-    });
-    zone.addEventListener('dragend', () => {
-      if (!dragged) return;
-      dragged.classList.remove('is-dragging');
-      const form = document.querySelector(`#${zone.dataset.sortForm}`);
-      dragged = undefined;
-      dragFromHandle = false;
-      form?.requestSubmit();
-    });
-  });
-}
-enableSorting('[data-lesson-dropzone]', '.topic-card');
-enableSorting('[data-block-dropzone]', '.content-block');
-</script>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/course_builder.js' %}{{ static_asset_version }}" defer></script>
 {% endblock %}

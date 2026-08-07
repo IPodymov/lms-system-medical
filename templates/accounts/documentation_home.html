@@ -1,6 +1,42 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block title %}Документация — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/documentation.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
-<section class="page-header"><p class="eyebrow">Рабочие руководства</p><h1>Документация</h1><p>Краткие инструкции для подготовки учебных программ и управления обучением.</p></section>
-<section class="documentation-layout"><nav class="documentation-nav" aria-label="Разделы документации"><p>Разделы</p><a class="is-active" href="{% url 'documentation-home' %}">Обзор</a><a href="{% url 'documentation-courses' %}">Создание курса</a>{% if can_access_management_documentation %}<a href="{% url 'documentation-management' %}">Управление</a>{% endif %}</nav><article class="card documentation-content"><h2>С чего начать</h2><p class="documentation-intro">Выберите задачу — здесь собраны действия в том порядке, в котором они выполняются в платформе.</p><div class="documentation-cards"><a class="documentation-link-card" href="{% url 'documentation-courses' %}"><strong>Создать и открыть курс</strong><span>Черновик, программа с разделами и темами, тесты, дополнительные материалы, сроки обучения и публикация.</span></a>{% if can_access_management_documentation %}<a class="documentation-link-card" href="{% url 'documentation-management' %}"><strong>Управлять обучением</strong><span>Организации, роли пользователей, прогресс слушателей и безопасный доступ к служебной документации.</span></a>{% endif %}</div></article></section>
+<div class="ui-stack documentation">
+
+  <header class="page-head">
+    <p class="page-head__eyebrow">Рабочие руководства</p>
+    <h1 class="page-head__title">Документация</h1>
+    <p class="page-head__subtitle">Краткие инструкции для подготовки учебных программ и управления обучением.</p>
+  </header>
+
+  {% include 'components/documentation_nav.html' with active='home' can_open_management_section=can_access_management_documentation %}
+
+  <article class="ui-card ui-stack">
+    <div>
+      <h2 class="section-head__title">С чего начать</h2>
+      <p class="documentation__lead">Выберите задачу — здесь собраны действия в том порядке, в котором они выполняются в платформе.</p>
+    </div>
+
+    <div class="documentation__cards">
+      <a class="ui-card ui-card--interactive documentation__link" href="{% url 'documentation-courses' %}">
+        <strong>Создать и открыть курс</strong>
+        <span>Черновик, программа с разделами и темами, тесты, дополнительные материалы, сроки обучения и публикация.</span>
+      </a>
+      {% if can_access_management_documentation %}
+        <a class="ui-card ui-card--interactive documentation__link" href="{% url 'documentation-management' %}">
+          <strong>Управлять обучением</strong>
+          <span>Организации, роли пользователей, прогресс слушателей и безопасный доступ к служебной документации.</span>
+        </a>
+      {% endif %}
+    </div>
+  </article>
+
+</div>
 {% endblock %}

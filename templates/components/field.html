@@ -19,8 +19,8 @@
   </div>
 {% else %}
   <div class="ui-field{% if errors %} is-invalid{% endif %}">
-    <label class="ui-label" for="{{ field.id_for_label }}">
-      {{ field.label }}{% if not field.field.required %}<span class="ui-label__optional"> — необязательно</span>{% endif %}
+    <label class="ui-label{% if label_hidden %} ui-visually-hidden{% endif %}" for="{{ field.id_for_label }}">
+      {{ field.label }}{% if not field.field.required and not label_hidden and optional_note %}<span class="ui-label__optional"> — необязательно</span>{% endif %}
     </label>
     {{ widget }}
     {% if hint %}<span class="ui-hint" id="{{ hint_id }}">{{ hint }}</span>{% endif %}

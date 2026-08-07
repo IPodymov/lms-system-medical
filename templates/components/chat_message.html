@@ -1,0 +1,25 @@
+{% comment %}
+  Одно сообщение чата — общее для личной переписки и чата курса.
+
+  Параметры:
+    message_id   — id сообщения; из него строится якорь #message-<id>,
+                   по которому static/js/chat.js узнаёт уже показанное
+                   сообщение и не дублирует его
+    author_name  — подпись автора
+    body         — текст, может быть пустым (тогда есть вложение)
+    attachment   — FileField или пусто
+    created_at   — datetime
+    is_own       — True для сообщений текущего пользователя
+
+  Разметку этого файла повторяет static/js/chat.js, когда сообщение
+  приходит по websocket. Меняешь здесь — правь и там, иначе пришедшее
+  сообщение будет выглядеть иначе, чем то же самое после перезагрузки.
+{% endcomment %}
+<article class="chat-msg{% if is_own %} chat-msg--own{% endif %}" id="message-{{ message_id }}">
+  <strong class="chat-msg__author">{{ author_name }}</strong>
+  {% if body %}<p class="chat-msg__body">{{ body|linebreaksbr }}</p>{% endif %}
+  {% if attachment %}
+    <a class="chat-msg__attachment" href="{{ attachment.url }}" target="_blank" rel="noopener">Скачать вложение</a>
+  {% endif %}
+  <time class="chat-msg__time" datetime="{{ created_at|date:'c' }}">{{ created_at|date:"d.m H:i" }}</time>
+</article>

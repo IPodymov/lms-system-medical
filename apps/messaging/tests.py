@@ -66,6 +66,29 @@ class MessagingTests(TransactionTestCase):
         self.assertContains(response, f"@{self.recipient.username}")
         self.assertContains(response, self.recipient.email)
 
+    def test_chat_script_is_external_and_gets_the_user_id_from_markup(self):
+        """Скрипт чата обязан оставаться одинаковым для всех пользователей.
+
+        Пока id пользователя стоял внутри JS-строки в шаблоне, ответ был
+        персональным: закешировать его было нельзя.
+        """
+        self.client.force_login(self.sender)
+
+        response = self.client.get(reverse("direct-message-thread", args=[self.recipient.pk]))
+
+        self.assertContains(response, f'data-current-user="{self.sender.pk}"')
+        self.assertContains(response, "js/chat")
+        self.assertNotContains(response, f'sender_id === "{self.sender.pk}"')
+
+    def test_message_area_is_a_live_region(self):
+        """Пришедшее сообщение должно объявляться скринридером."""
+        self.client.force_login(self.sender)
+
+        response = self.client.get(reverse("direct-message-thread", args=[self.recipient.pk]))
+
+        self.assertContains(response, 'role="log"')
+        self.assertContains(response, 'aria-live="polite"')
+
     def test_repeated_direct_message_post_with_same_token_creates_one_message(self):
         self.client.force_login(self.sender)
         url = reverse("direct-message-thread", args=[self.recipient.pk])

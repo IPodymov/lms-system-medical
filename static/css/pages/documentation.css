@@ -1,0 +1,64 @@
+/* =========================================================================
+   Документация
+   -------------------------------------------------------------------------
+   Четыре страницы сплошного текста. Всё, что им нужно сверх компонентов, —
+   ограничение ширины колонки и ритм заголовков внутри статьи.
+   ========================================================================= */
+
+.documentation {
+  max-width: 56rem;
+}
+
+.documentation__lead {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-16);
+  line-height: var(--leading-normal);
+}
+
+/* Статья — единственное место в проекте, где заголовки и списки идут
+   сплошным потоком, поэтому вертикальный ритм задан здесь, а не gap'ом
+   контейнера: между заголовком и его списком расстояние меньше, чем
+   между разделами. */
+.documentation__article ol,
+.documentation__article p {
+  margin: 0;
+}
+
+.documentation__article ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-inline-start: var(--space-24);
+}
+
+.documentation__step {
+  margin: var(--space-8) 0 0;
+  font-size: var(--text-16);
+  font-weight: var(--weight-semibold);
+}
+
+.documentation__article code {
+  padding: 0 var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-xs);
+}
+
+/* Карточки разделов на странице обзора */
+.documentation__cards {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.documentation__link {
+  gap: var(--space-4);
+}
+
+.documentation__link span {
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}

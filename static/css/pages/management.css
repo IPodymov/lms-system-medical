@@ -1,0 +1,175 @@
+/* =========================================================================
+   Журнал успеваемости и страница учебной группы
+   -------------------------------------------------------------------------
+   Обе страницы работают в плотном режиме (data-density="compact") и в
+   широкой раскладке (data-width="wide") — атрибуты стоят на <main>, а сами
+   значения приходят из tokens.css. Здесь только то, что таблицам и формам
+   этих двух страниц нужно сверх компонентов.
+   ========================================================================= */
+
+/* Состав группы слева, формы управления справа. Одна колонка до 1024px:
+   формы шириной в пол-экрана рядом с таблицей на 4 колонки не помещаются. */
+.group-layout {
+  display: grid;
+  gap: var(--density-section-gap);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .group-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  }
+}
+
+/* Иначе ссылка-кнопка растянулась бы на всю ширину шапки. */
+.group-page__back {
+  align-self: flex-start;
+}
+
+.group-aside {
+  min-width: 0;
+}
+
+/* .ui-card — flex-колонка, потомки растягиваются по поперечной оси, и
+   кнопка занимала бы всю ширину карточки. */
+.group-form > .ui-btn {
+  align-self: flex-start;
+}
+
+/* Логин — единственное место, где важно различать похожие символы:
+   моноширинный шрифт здесь несёт смысл, а не оформление. */
+.group-roster__login {
+  font-family: var(--font-mono);
+  font-size: var(--text-13);
+}
+
+/* -------------------------------------------------------------------------
+   Панель управления
+   ------------------------------------------------------------------------- */
+
+.stat-row {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+.stat {
+  gap: var(--space-4);
+}
+
+.stat__label {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.stat__value {
+  font-size: var(--text-30);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
+}
+
+.mgmt-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--density-section-gap);
+  min-width: 0;
+}
+
+/* Панель, скрытая скриптом вкладок. Собственный display у .mgmt-panel
+   перебил бы display:none из стилей браузера для [hidden], поэтому
+   правило нужно явно. */
+.mgmt-panel[hidden] {
+  display: none;
+}
+
+.mgmt-grid {
+  display: grid;
+  gap: var(--space-16);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .mgmt-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mgmt-card__title {
+  margin: 0;
+  font-size: var(--text-18);
+  font-weight: var(--weight-semibold);
+}
+
+.mgmt-card__text {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  line-height: var(--leading-normal);
+}
+
+.mgmt-card__note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  line-height: var(--leading-normal);
+}
+
+.mgmt-card__note code {
+  font-family: var(--font-mono);
+  font-size: var(--text-11);
+}
+
+/* Единственный класс формы вместо четырёх (.inline-form, .management-form,
+   .management-user-form, .management-link-form), которые отличались только
+   сеткой. Раскладку задаёт модификатор, а не новый класс формы. */
+.mgmt-form {
+  display: grid;
+  gap: var(--space-12);
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .mgmt-form--two-column {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mgmt-form__row {
+  display: grid;
+  gap: var(--space-12);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Кнопка не должна растягиваться на всю ширину сетки формы. */
+.mgmt-form > .ui-btn {
+  justify-self: start;
+}
+
+.group-row {
+  flex-direction: row;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-12) var(--space-16);
+}
+
+.group-row__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.group-row__text small {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+}
+
+.group-row__action {
+  margin-inline-start: auto;
+  color: var(--color-primary);
+  font-size: var(--text-13);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}

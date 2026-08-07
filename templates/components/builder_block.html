@@ -1,0 +1,75 @@
+{% comment %}
+  Учебный блок внутри темы: строка с названием, типом и действиями.
+
+  Параметры:
+    block     — ContentBlock
+    course    — Course (нужен для ссылки на тест)
+    lesson    — Lesson, которой принадлежит блок
+    is_first  — True, если блок первый в теме
+    is_last   — True, если последний
+
+  Перетаскивание берёт блок за ручку (data-drag-handle), кнопки «вверх /
+  вниз» делают то же самое без указателя — см. components/builder_move.html.
+{% endcomment %}
+<div class="builder-block" id="block-{{ block.id }}" draggable="true" data-block-id="{{ block.id }}">
+  <input form="block-sort-{{ lesson.id }}" type="hidden" name="block_id" value="{{ block.id }}">
+
+  <span class="builder-block__handle" data-drag-handle aria-hidden="true">⠿</span>
+
+  <div class="builder-block__text">
+    <strong>{{ block.title }}</strong>
+    <small>{{ block.get_type_display }}</small>
+  </div>
+
+  <div class="ui-cluster builder-block__actions">
+    {% include 'components/builder_move.html' with action="move_block" id_field="block_id" item_id=block.id label="блок «"|add:block.title|add:"»" is_first=is_first is_last=is_last %}
+
+    {% if block.quiz %}
+      <a class="ui-btn ui-btn--ghost ui-btn--sm" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Открыть тест</a>
+    {% endif %}
+
+    {% comment %}
+      Подтверждение вешает course_builder.js по data-confirm: инлайновый
+      onclick не проходит Content-Security-Policy и не переиспользуется.
+    {% endcomment %}
+    <button class="ui-btn ui-btn--danger-quiet ui-btn--sm" type="submit" form="delete-block-{{ block.id }}"
+            data-confirm="Удалить блок без возможности восстановления?">Удалить</button>
+  </div>
+
+  <details class="ui-accordion builder-block__edit">
+    <summary>Редактировать</summary>
+    <div class="ui-accordion__body">
+      <form class="ui-stack" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_block">
+        <input type="hidden" name="block_id" value="{{ block.id }}">
+        <div class="ui-field">
+          <label class="ui-label" for="block-title-{{ block.id }}">Название блока</label>
+          <input class="ui-input" id="block-title-{{ block.id }}" name="block_title" required value="{{ block.title }}">
+        </div>
+        {% if block.type == 'text' %}
+          <div class="ui-field">
+            <label class="ui-label" for="block-body-{{ block.id }}">Содержание</label>
+            <textarea class="ui-textarea" id="block-body-{{ block.id }}" name="text_body" required rows="5">{{ block.text_content.body }}</textarea>
+          </div>
+        {% elif block.type == 'file' %}
+          <div class="ui-field">
+            <label class="ui-label" for="block-comment-{{ block.id }}">Комментарий</label>
+            <textarea class="ui-textarea" id="block-comment-{{ block.id }}" name="material_description" rows="3">{{ block.file_content.description }}</textarea>
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="block-file-{{ block.id }}">Заменить файл <span class="ui-label__optional">— необязательно</span></label>
+            <input class="ui-input" id="block-file-{{ block.id }}" type="file" name="file">
+          </div>
+        {% endif %}
+        <button class="ui-btn ui-btn--secondary" type="submit" data-submit-once>Сохранить блок</button>
+      </form>
+    </div>
+  </details>
+</div>
+
+<form id="delete-block-{{ block.id }}" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_block">
+  <input type="hidden" name="delete_block_id" value="{{ block.id }}">
+</form>

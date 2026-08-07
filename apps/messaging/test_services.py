@@ -1,10 +1,15 @@
 from uuid import uuid4
 
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.messaging.models import DirectMessage
 from apps.messaging.realtime import course_room_name, direct_room_name
-from apps.messaging.services import create_course_message, create_direct_message
+from apps.messaging.services import (
+    create_course_message,
+    create_direct_message,
+    serialize_direct_message,
+)
 from apps.notifications.models import Notification
 from apps.test_helpers import CourseFixture
 
@@ -60,3 +65,30 @@ class MessagingServiceTests(TestCase):
         second = self.recipient_data["user"].pk
         self.assertEqual(direct_room_name(first, second), direct_room_name(second, first))
         self.assertEqual(course_room_name(self.data["run"].pk), f"course.{self.data['run'].pk.hex}")
+
+
+class MessageSerializationTests(TestCase):
+    """Время у сообщения, пришедшего сокетом, и у него же после перезагрузки.
+
+    Оба пути показывают одно сообщение, но разными средствами: шаблон
+    печатает `created_at` в TIME_ZONE, сериализатор — строкой. Пока строка
+    строилась без localtime, время расходилось ровно на смещение часового
+    пояса, и переписка выглядела так, будто ответ пришёл раньше вопроса.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.data = CourseFixture.create(email="serialize@test.local")
+
+    def test_created_at_is_serialized_in_the_projects_timezone(self):
+        message = DirectMessage.objects.create(
+            sender=self.data["user"],
+            recipient=self.data["user"],
+            body="Время",
+        )
+
+        payload = serialize_direct_message(message)
+
+        expected = timezone.localtime(message.created_at).strftime("%d.%m %H:%M")
+        self.assertEqual(payload["created_at"], expected)
+        self.assertNotEqual(timezone.get_current_timezone_name(), "UTC")

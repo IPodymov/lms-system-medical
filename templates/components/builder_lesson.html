@@ -1,0 +1,113 @@
+{% comment %}
+  Карточка темы в конструкторе: заголовок, блоки, формы добавления.
+
+  Параметры:
+    lesson    — Lesson с предзагруженными blocks
+    course    — Course
+    number    — порядковый номер темы в разделе
+    is_first  — True, если тема первая в разделе
+    is_last   — True, если последняя
+{% endcomment %}
+<article class="ui-card ui-stack builder-topic" id="lesson-{{ lesson.id }}" draggable="true" data-lesson-id="{{ lesson.id }}">
+  <input form="lesson-sort-{{ lesson.section_id }}" type="hidden" name="lesson_id" value="{{ lesson.id }}">
+
+  <header class="builder-topic__head">
+    <span class="builder-topic__handle" data-drag-handle aria-hidden="true">⠿</span>
+    <div class="builder-topic__title">
+      <p class="page-head__eyebrow">Тема {{ number }}</p>
+      <h3 class="section-head__title">{{ lesson.title }}</h3>
+      {% if lesson.description %}<p class="builder-topic__description">{{ lesson.description }}</p>{% endif %}
+    </div>
+    <div class="ui-cluster builder-topic__actions">
+      {% include 'components/builder_move.html' with action="move_lesson" id_field="lesson_id" item_id=lesson.id label="тему «"|add:lesson.title|add:"»" is_first=is_first is_last=is_last %}
+      <a class="ui-btn ui-btn--ghost ui-btn--sm" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">Создать тест</a>
+    </div>
+  </header>
+
+  <details class="ui-accordion">
+    <summary>Редактировать тему</summary>
+    <div class="ui-accordion__body">
+      <form class="ui-stack" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_lesson">
+        <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+        <div class="ui-field">
+          <label class="ui-label" for="lesson-title-{{ lesson.id }}">Название темы</label>
+          <input class="ui-input" id="lesson-title-{{ lesson.id }}" name="lesson_title" required value="{{ lesson.title }}">
+        </div>
+        <div class="ui-field">
+          <label class="ui-label" for="lesson-description-{{ lesson.id }}">Описание</label>
+          <textarea class="ui-textarea" id="lesson-description-{{ lesson.id }}" name="lesson_description" rows="2">{{ lesson.description }}</textarea>
+        </div>
+        <button class="ui-btn ui-btn--secondary" type="submit" data-submit-once>Сохранить тему</button>
+      </form>
+    </div>
+  </details>
+
+  <div class="builder-blocks" data-block-dropzone data-sort-form="block-sort-{{ lesson.id }}">
+    {% for block in lesson.blocks.all %}
+      {% include 'components/builder_block.html' with block=block course=course lesson=lesson is_first=forloop.first is_last=forloop.last %}
+    {% empty %}
+      <p class="builder-empty-hint">В теме пока нет блоков. Выберите тип материала ниже.</p>
+    {% endfor %}
+  </div>
+
+  {% comment %}
+    Форма сохранения порядка живёт вне зоны перетаскивания: элементы внутри
+    зоны переставляются местами, а форма обязана пережить перестановку.
+  {% endcomment %}
+  <form id="block-sort-{{ lesson.id }}" method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="reorder_blocks">
+    <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+  </form>
+
+  <details class="ui-accordion" {% if not lesson.blocks.all %}open{% endif %}>
+    <summary>Добавить учебный блок</summary>
+    <div class="ui-accordion__body ui-stack">
+      <p class="builder-topic__description">Блок - это единица обучения внутри темы. Выберите подходящий тип.</p>
+      <div class="builder-block-forms">
+        <form class="ui-stack" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_text">
+          <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+          <h4 class="builder-form__title">Текст или лекция</h4>
+          <div class="ui-field">
+            <label class="ui-label" for="text-title-{{ lesson.id }}">Название блока</label>
+            <input class="ui-input" id="text-title-{{ lesson.id }}" name="text_title" required placeholder="Основные понятия">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="text-body-{{ lesson.id }}">Содержание</label>
+            <textarea class="ui-textarea" id="text-body-{{ lesson.id }}" name="text_body" required rows="4" placeholder="Введите текст для слушателей"></textarea>
+          </div>
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить текст</button>
+        </form>
+
+        <form class="ui-stack" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_material">
+          <input type="hidden" name="lesson_id" value="{{ lesson.id }}">
+          <h4 class="builder-form__title">Файл или материал</h4>
+          <div class="ui-field">
+            <label class="ui-label" for="material-title-{{ lesson.id }}">Название блока</label>
+            <input class="ui-input" id="material-title-{{ lesson.id }}" name="material_title" required placeholder="Атлас строения сердца">
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="material-description-{{ lesson.id }}">Комментарий <span class="ui-label__optional">— необязательно</span></label>
+            <textarea class="ui-textarea" id="material-description-{{ lesson.id }}" name="material_description" rows="2"></textarea>
+          </div>
+          <div class="ui-field">
+            <label class="ui-label" for="material-file-{{ lesson.id }}">Файл</label>
+            <input class="ui-input" id="material-file-{{ lesson.id }}" type="file" name="file" required>
+          </div>
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Загрузить файл</button>
+        </form>
+
+        <a class="ui-card ui-card--interactive builder-quiz-cta" href="{% url 'quiz-create' course.id %}?lesson_id={{ lesson.id }}">
+          <span class="page-head__eyebrow">Проверка знаний</span>
+          <strong>Создать тест для темы →</strong>
+        </a>
+      </div>
+    </div>
+  </details>
+</article>

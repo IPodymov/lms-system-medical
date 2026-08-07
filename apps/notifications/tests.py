@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.notifications.models import Notification
@@ -36,3 +37,26 @@ class NotificationTaskTests(TestCase):
             updated_at=timezone.now() - timedelta(days=8)
         )
         self.assertEqual(remind_inactive_learners(days=7), 0)
+
+
+class NotificationListViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.data = CourseFixture.create(email="notification-list@test.local")
+        Notification.objects.bulk_create(
+            Notification(user=cls.data["user"], type="system", title=f"Событие {i}", body="Текст")
+            for i in range(25)
+        )
+
+    def test_list_is_paginated_and_newest_first(self):
+        self.client.force_login(self.data["user"])
+        first_page = self.client.get(reverse("notifications"))
+        self.assertEqual(len(first_page.context["notifications"]), 20)
+        self.assertEqual(first_page.context["notifications"].paginator.num_pages, 2)
+
+        second_page = self.client.get(reverse("notifications"), {"page": 2})
+        self.assertEqual(len(second_page.context["notifications"]), 5)
+
+        # Страницы не пересекаются: сортировка задана явно, а не отдана СУБД.
+        ids = {n.pk for n in first_page.context["notifications"]}
+        self.assertTrue(ids.isdisjoint({n.pk for n in second_page.context["notifications"]}))

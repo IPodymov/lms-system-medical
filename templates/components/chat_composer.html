@@ -1,0 +1,42 @@
+{% comment %}
+  Поле ввода сообщения — общее для личной переписки и чата курса.
+
+  Параметры:
+    form          — DirectMessageForm или CourseMessageForm
+    ws_kind       — «direct» или «course»: маршруты сокетов заданы в
+                    apps/messaging/routing.py и имени в urls.py не имеют,
+                    поэтому путь собирается здесь, а не через {% url %}
+    ws_id         — id собеседника или потока
+    attach_label  — подпись кнопки выбора файла
+    submit_label  — подпись кнопки отправки
+
+  data-current-user отдаёт скрипту id пользователя: раньше он был вписан
+  прямо в JS-строку внутри шаблона, из-за чего файл нельзя было ни
+  закешировать, ни минифицировать.
+{% endcomment %}
+{% load form_tags %}
+<form class="chat-composer" method="post" enctype="multipart/form-data"
+      data-chat-form
+      data-websocket-path="/ws/messages/{{ ws_kind }}/{{ ws_id }}/"
+      data-current-user="{{ user.id }}">
+  {% csrf_token %}
+  {{ form.client_token }}
+
+  <div class="chat-composer__field">
+    {% form_field form.body label_hidden=True %}
+  </div>
+
+  {% comment %}
+    Настоящий input[type=file] остаётся в разметке и получает фокус с
+    клавиатуры — он лишь убран с экрана, а видимую роль кнопки играет
+    связанный с ним <label>. Прежняя версия прятала его через display:none,
+    и добраться до вложения без мыши было нельзя.
+  {% endcomment %}
+  <div class="chat-composer__attach">
+    <label class="ui-btn ui-btn--secondary chat-composer__attach-label" for="{{ form.attachment.id_for_label }}">{{ attach_label }}</label>
+    {{ form.attachment }}
+    <span class="chat-composer__file" data-attachment-name aria-live="polite"></span>
+  </div>
+
+  <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>{{ submit_label }}</button>
+</form>

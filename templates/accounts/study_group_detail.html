@@ -1,22 +1,147 @@
 {% extends 'base.html' %}
-{% block title %}{{ study_group.name }} | Управление | МедЛМС{% endblock %}
+{% load static form_tags %}
+
+{% block title %}{{ study_group.name }} — управление — МедЛМС{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/pages/management.css' %}{{ static_asset_version }}" />
+{% endblock %}
+
+{% block main_attrs %} data-width="wide" data-density="compact"{% endblock %}
+
 {% block content %}
-<section class="group-detail-header">
-  <div><a class="back-link" href="{% url 'admin-dashboard' %}">← Все группы</a><p class="eyebrow">Учебная группа</p><h1>{{ study_group.name }}</h1><p>{{ study_group.department.faculty.organization.short_name }} · поступление {{ study_group.admission_year }} · выпуск {{ study_group.graduation_year }}</p></div>
-  <span class="group-member-count">{{ members|length }} слушателей</span>
-</section>
+<div class="ui-stack">
 
-<section class="group-detail-layout">
-  <div class="group-roster">
-    <div class="section-heading"><div><p class="eyebrow">Состав</p><h2>Студенты группы</h2></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Студент</th><th>Логин</th><th>Номер студента</th><th>В группе с</th></tr></thead><tbody>{% for member in members %}<tr><td><strong>{{ member.user.get_full_name|default:member.user.email }}</strong><small>{{ member.user.email }}</small></td><td><code>{{ member.user.username }}</code></td><td>{{ member.organization_membership.student_number|default:"—" }}</td><td>{{ member.joined_at|date:"d.m.Y" }}</td></tr>{% empty %}<tr><td colspan="4">В группе пока нет студентов.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="section-head">
+    <header class="page-head">
+      <a class="ui-btn ui-btn--ghost ui-btn--sm group-page__back" href="{% url 'admin-dashboard' %}"><span aria-hidden="true">←</span> Все группы</a>
+      <p class="page-head__eyebrow">Учебная группа</p>
+      <h1 class="page-head__title">{{ study_group.name }}</h1>
+      <p class="page-head__subtitle">{{ study_group.department.faculty.organization.short_name }} · поступление {{ study_group.admission_year }} · выпуск {{ study_group.graduation_year }}</p>
+    </header>
+    <span class="ui-badge ui-badge--neutral">{{ members|length }} слушателей</span>
   </div>
-  <aside class="group-actions">
-    <article class="card management-panel"><p class="eyebrow">Новый студент</p><h2>Добавить в группу</h2><form class="management-form" method="post" action="{% url 'add-student' %}">{% csrf_token %}<input type="hidden" name="group_id" value="{{ study_group.id }}"><label>Фамилия<input name="last_name" required></label><label>Имя<input name="first_name" required></label><label>Отчество<input name="middle_name"></label><label>Email<input name="email" type="email" required></label><label>Временный пароль<input name="password" type="password" autocomplete="new-password" required></label><label>Номер студента<input name="student_number"></label><button>Добавить</button></form></article>
-    <article class="card management-panel"><p class="eyebrow">Массовая запись</p><h2>Записать группу</h2><form class="management-form" method="post" action="{% url 'manage-course-enrollment' %}">{% csrf_token %}<input name="action" value="add_group" type="hidden"><input name="group_id" value="{{ study_group.id }}" type="hidden"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><button>Записать всех активных</button></form></article>
-    <article class="card management-panel"><p class="eyebrow">Приглашение</p><h2>Ссылка на поток</h2><form class="management-form" method="post" action="{% url 'create-course-enrollment-link' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'study-group-detail' study_group.id %}"><label>Поток<select name="course_run_id" required>{% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}</select></label><label>Название<input name="label" placeholder="Для {{ study_group.name }}"></label><label>Действует до<input name="expires_at" type="datetime-local"></label><button>Создать ссылку</button></form></article>
-  </aside>
-</section>
 
-<section class="management-section group-links"><div class="section-heading"><div><p class="eyebrow">Созданные приглашения</p><h2>Ссылки на курсы организации</h2></div></div>{% url 'study-group-detail' study_group.id as enrollment_links_next_url %}{% include 'components/enrollment_links.html' with enrollment_links_empty_message="Создайте первую ссылку для записи на курс." %}</section>
+  <div class="group-layout">
+
+    <section class="ui-stack" aria-labelledby="roster-title">
+      <div class="section-head">
+        <div>
+          <p class="page-head__eyebrow">Состав</p>
+          <h2 class="section-head__title" id="roster-title">Студенты группы</h2>
+        </div>
+      </div>
+
+      {% if members %}
+        <div class="ui-table-wrap">
+          <table class="ui-table">
+            <caption class="ui-visually-hidden">Состав группы {{ study_group.name }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Студент</th>
+                <th scope="col">Логин</th>
+                <th scope="col">Номер студента</th>
+                <th scope="col">В группе с</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for member in members %}
+                <tr>
+                  <td>
+                    <strong>{{ member.user.get_full_name|default:member.user.email }}</strong>
+                    <span class="ui-table__cell-sub">{{ member.user.email }}</span>
+                  </td>
+                  <td><code class="group-roster__login">{{ member.user.username }}</code></td>
+                  <td>{{ member.organization_membership.student_number|default:"—" }}</td>
+                  <td>{{ member.joined_at|date:"d.m.Y" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="ui-empty ui-empty--inline">
+          <h3 class="ui-empty__title">В группе пока нет студентов.</h3>
+          <p class="ui-empty__text">Добавьте первого слушателя формой справа.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {% comment %}
+      Три формы правой колонки написаны ручной разметкой и читаются во view
+      через request.POST: Django Form у них нет, поэтому нет и {% form_field %}.
+      Классы полей проставлены вручную — перевод форм на Django Forms идёт
+      отдельным шагом на этапе 4.10, вместе с панелью управления.
+    {% endcomment %}
+    <aside class="ui-stack group-aside">
+
+      <article class="ui-card ui-stack">
+        <div>
+          <p class="page-head__eyebrow">Новый студент</p>
+          <h2 class="section-head__title">Добавить в группу</h2>
+        </div>
+        {% form_errors student_form "Укажите ФИО, email и временный пароль студента." %}
+        <form class="ui-stack group-form" method="post" action="{% url 'add-student' %}" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="group_id" value="{{ study_group.id }}">
+          {% form_field student_form.last_name autocomplete="family-name" %}
+          {% form_field student_form.first_name autocomplete="given-name" %}
+          {% form_field student_form.middle_name autocomplete="additional-name" %}
+          {% form_field student_form.email autocomplete="email" %}
+          {% form_field student_form.password autocomplete="new-password" %}
+          {% form_field student_form.student_number %}
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Добавить</button>
+        </form>
+      </article>
+
+      <article class="ui-card ui-stack">
+        <div>
+          <p class="page-head__eyebrow">Массовая запись</p>
+          <h2 class="section-head__title">Записать группу</h2>
+        </div>
+        <form class="ui-stack group-form" method="post" action="{% url 'manage-course-enrollment' %}">
+          {% csrf_token %}
+          <input name="action" value="add_group" type="hidden">
+          <input name="group_id" value="{{ study_group.id }}" type="hidden">
+          <div class="ui-field">
+            <label class="ui-label" for="bulk-run">Поток</label>
+            <select class="ui-select" id="bulk-run" name="course_run_id" required>
+              {% for run in course_runs %}<option value="{{ run.id }}">{{ run.course.title }} · {{ run.title }}</option>{% endfor %}
+            </select>
+          </div>
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Записать всех активных</button>
+        </form>
+      </article>
+
+      <article class="ui-card ui-stack">
+        <div>
+          <p class="page-head__eyebrow">Приглашение</p>
+          <h2 class="section-head__title">Ссылка на поток</h2>
+        </div>
+        {% form_errors link_form "Укажите поток и корректный срок действия ссылки." %}
+        <form class="ui-stack group-form" method="post" action="{% url 'create-course-enrollment-link' %}" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'study-group-detail' study_group.id %}">
+          {% form_field link_form.course_run %}
+          {% form_field link_form.label placeholder=group_link_placeholder %}
+          {% form_field link_form.expires_at %}
+          <button class="ui-btn ui-btn--primary" type="submit" data-submit-once>Создать ссылку</button>
+        </form>
+      </article>
+
+    </aside>
+  </div>
+
+  <section class="ui-stack" aria-labelledby="links-title">
+    <div class="section-head">
+      <div>
+        <p class="page-head__eyebrow">Созданные приглашения</p>
+        <h2 class="section-head__title" id="links-title">Ссылки на курсы организации</h2>
+      </div>
+    </div>
+    {% url 'study-group-detail' study_group.id as enrollment_links_next_url %}
+    {% include 'components/enrollment_links.html' with enrollment_links_empty_message="Создайте первую ссылку для записи на курс." %}
+  </section>
+
+</div>
 {% endblock %}

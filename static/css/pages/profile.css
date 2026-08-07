@@ -1,0 +1,62 @@
+/* =========================================================================
+   Профиль: карточка пользователя и две формы рядом
+   -------------------------------------------------------------------------
+   История обучения оформлена общим partial'ом карточки записи, поэтому её
+   стили берутся из pages/learning-cards.css — здесь их нет.
+   ========================================================================= */
+
+.profile-identity {
+  flex-direction: row;
+  gap: var(--space-16);
+  align-items: center;
+}
+
+.profile-identity__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.profile-identity__name {
+  margin: 0;
+  font-size: var(--text-20);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+}
+
+.profile-identity__email {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+}
+
+/* Формы стоят в одну колонку до 1024px: рядом они помещаются только тогда,
+   когда каждой остаётся не меньше 320px, иначе поля становятся уже метки. */
+.profile-forms {
+  display: grid;
+  gap: var(--density-stack);
+}
+
+@media (min-width: 1024px) {
+  .profile-forms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* .ui-card — flex-колонка, и потомки по умолчанию растягиваются по
+   поперечной оси: без этого кнопка занимала бы всю ширину формы и читалась
+   бы как основное действие страницы. */
+.profile-form > .ui-btn {
+  align-self: flex-start;
+}
+
+/* Поле выбора файла: у него нет собственной высоты, а глобальный селектор
+   легаси-слоя (input { margin-top: 5px }) добавляет ему лишний отступ.
+   Убирается вместе с легаси-слоем на этапе 4.14. */
+.profile-form input[type="file"] {
+  margin-top: 0;
+  padding: var(--space-8) var(--space-12);
+}
