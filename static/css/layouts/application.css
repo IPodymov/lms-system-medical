@@ -1,232 +1,18 @@
-
-
-.page-header {
-    max-width: 760px;
-    margin-bottom: 34px;
-}
-
-.page-header h1 {
-    margin: 5px 0 9px;
-    font-size: clamp(32px, 5vw, 48px);
-}
-
-.page-header > p:last-child {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: 17px;
-}
-
-.eyebrow {
-    margin: 0;
-    color: var(--color-text-faint);
-    font-size: 12px;
-    font-weight: 750;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-
-.link-enrollment {
-    max-width: 620px;
-    padding: 32px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-}
-
-.link-enrollment h1 {
-    margin: 5px 0 8px;
-    font-size: clamp(28px, 4vw, 40px);
-}
-
-.link-enrollment > p:not(.eyebrow) {
-    color: var(--color-text-muted);
-}
-
-.link-enrollment-note {
-    padding: 12px;
-    margin: 20px 0;
-    color: var(--color-text) !important;
-    background: var(--color-surface-soft);
-    border-left: 3px solid var(--color-primary);
-}
-
-.link-enrollment-meta {
-    font-size: 13px;
-}
-
-.link-enrollment form {
-    margin-top: 24px;
-}
-
-.documentation-card {
-    max-width: 850px;
-    line-height: 1.7;
-}
-
-.documentation-card h2 {
-    margin: 28px 0 8px;
-}
-
-.documentation-card h2:first-child {
-    margin-top: 0;
-}
-
-.documentation-card li {
-    margin: 8px 0;
-}
-
-.documentation-card code {
-    padding: 2px 5px;
-    color: var(--color-accent-text);
-    background: var(--color-surface-soft);
-    border-radius: 4px;
-}
-
-.documentation-layout {
-    display: grid;
-    grid-template-columns: minmax(190px, 230px) minmax(0, 820px);
-    gap: 22px;
-    align-items: start;
-}
-
-.documentation-nav {
-    position: sticky;
-    top: 16px;
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-}
-
-.documentation-nav p {
-    padding: 4px 8px 8px;
-    margin: 0;
-    color: var(--color-text-faint);
-    border-bottom: 1px solid var(--color-border);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-
-.documentation-nav a {
-    padding: 9px 8px;
-    color: var(--color-text-muted);
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 650;
-}
-
-.documentation-nav a:hover, .documentation-nav a.is-active {
-    color: var(--color-accent-text);
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.documentation-content {
-    margin: 0;
-    padding: 30px;
-}
-
-.documentation-content h2 {
-    margin: 0 0 20px;
-    font-size: 25px;
-}
-
-.documentation-content h3 {
-    margin: 28px 0 8px;
-    font-size: 17px;
-}
-
-.documentation-content h3:first-of-type {
-    margin-top: 0;
-}
-
-.documentation-content p, .documentation-content li {
-    color: var(--color-accent-text);
-    line-height: 1.7;
-}
-
-.documentation-content ol {
-    display: grid;
-    gap: 9px;
-    padding-left: 24px;
-}
-
-.documentation-intro {
-    margin: 0 0 24px;
-    color: var(--color-text-muted) !important;
-    font-size: 16px;
-}
-
-.documentation-cards {
-    display: grid;
-    gap: 12px;
-}
-
-.documentation-link-card {
-    display: block;
-    padding: 18px;
-    background: var(--color-surface-soft);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    transition: transform .18s ease, border-color .18s ease, background .18s ease;
-}
-
-.documentation-link-card:hover {
-    background: var(--color-accent-surface);
-    border-color: color-mix(in srgb, var(--color-primary) 38%, transparent);
-    transform: translateX(3px);
-}
-
-.documentation-link-card strong, .documentation-link-card span {
-    display: block;
-}
-
-.documentation-link-card strong {
-    color: var(--color-accent-text);
-}
-
-.documentation-link-card span {
-    margin-top: 5px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-    line-height: 1.5;
-}
+/* =========================================================================
+   Остатки прежнего слоя
+   -------------------------------------------------------------------------
+   Классов здесь больше нет: все страницы мигрировали. Осталась только
+   «страховка по тегам» — правила, написанные когда-то поверх всего сразу.
+   Часть из них уже вредит новому слою (например, `p { max-width: 75ch }`
+   и `table { min-width: 640px }` применяются и там, где не задумывались),
+   поэтому файл снимается целиком на этапе 4.14 — по одному правилу, с
+   проверкой страниц после каждого.
+   ========================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
-    }
-}
-
-@media (max-width: 760px) {
-
-    .page-header {
-        margin-bottom: 26px;
-    }
-
-    .learning-layout, .documentation-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .documentation-nav {
-        position: static;
-    }
-
-    .documentation-nav {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .documentation-nav p {
-        grid-column: 1 / -1;
-    }
-
-    .documentation-content {
-        padding: 22px;
     }
 }
 
@@ -268,19 +54,7 @@ form {
     min-width: 0;
 }
 
-.card, .course-detail, .course-card {
-    overflow: hidden;
-}
-
-.learning-layout, .documentation-layout {
-    min-width: 0;
-}
-
 fieldset {
-    min-width: 0;
-}
-
-.documentation-cards {
     min-width: 0;
 }
 
@@ -288,45 +62,7 @@ table {
     min-width: 640px;
 }
 
-@media (max-width: 1024px) {
-
-    .documentation-layout {
-        grid-template-columns: 190px minmax(0, 1fr);
-    }
-}
-
-@media (max-width: 767px) {
-
-    .page-header, .catalog-heading {
-        margin-bottom: 22px;
-    }
-
-    .page-header h1, .catalog-heading h1 {
-        font-size: clamp(28px, 9vw, 40px);
-    }
-
-    .documentation-content {
-        padding: 18px;
-    }
-
-    .documentation-cards {
-        grid-template-columns: 1fr;
-    }
-
-    .documentation-nav {
-        grid-template-columns: 1fr;
-    }
-
-    .documentation-nav p {
-        grid-column: auto;
-    }
-}
-
 @media (max-width: 479px) {
-
-    .draft-courses, .course-detail-content, .documentation-content {
-        padding: 14px;
-    }
 
     fieldset {
         padding: 12px;
@@ -334,10 +70,6 @@ table {
 }
 
 @media (max-width: 359px) {
-
-    .page-header h1, .catalog-heading h1 {
-        font-size: 28px;
-    }
 
     button {
         width: 100%;

@@ -448,3 +448,39 @@ class ManagementFormErrorTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Файл должен быть в формате .xlsx.", count=2)
+
+
+class DocumentationNavigationTests(TestCase):
+    """Навигация по документации: текущий раздел и скрытие недоступного."""
+
+    def setUp(self):
+        self.teacher = User.objects.create_user("docs-teacher@test.local", "safe-password-123")
+        organization = Organization.objects.create(
+            name="Медколледж", short_name="МК", slug="docs-college"
+        )
+        OrganizationMembership.objects.create(
+            user=self.teacher,
+            organization=organization,
+            role=OrganizationMembership.Role.TEACHER,
+        )
+
+    def test_current_section_is_marked_and_management_is_hidden_from_teacher(self):
+        self.client.force_login(self.teacher)
+
+        response = self.client.get(reverse("documentation-courses"))
+
+        # Ссылка текущего раздела помечена aria-current: без этого раздел
+        # отличался бы только цветом подчёркивания.
+        self.assertContains(
+            response,
+            f'href="{reverse("documentation-courses")}" aria-current="page"',
+        )
+        self.assertNotContains(response, reverse("documentation-management"))
+
+    def test_administrator_sees_the_management_section(self):
+        admin = User.objects.create_superuser("docs-admin@test.local", "safe-password-123")
+        self.client.force_login(admin)
+
+        response = self.client.get(reverse("documentation-home"))
+
+        self.assertContains(response, reverse("documentation-management"))

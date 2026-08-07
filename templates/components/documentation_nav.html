@@ -1,0 +1,18 @@
+{% comment %}
+  Навигация по разделам документации.
+
+  Параметры:
+    active                        — «home», «courses» или «management»
+    can_open_management_section   — показывать ли раздел «Управление»
+
+  Это настоящие ссылки на страницы, а не вкладки с JavaScript: разделов
+  три, у каждого свой адрес, и открывать их нужно уметь в новой вкладке.
+  Оформление берётся у вкладок, текущий раздел помечен aria-current.
+{% endcomment %}
+<nav class="ui-tabs" aria-label="Разделы документации">
+  <a class="ui-tab" href="{% url 'documentation-home' %}"{% if active == 'home' %} aria-current="page"{% endif %}>Обзор</a>
+  <a class="ui-tab" href="{% url 'documentation-courses' %}"{% if active == 'courses' %} aria-current="page"{% endif %}>Создание курса</a>
+  {% if can_open_management_section %}
+    <a class="ui-tab" href="{% url 'documentation-management' %}"{% if active == 'management' %} aria-current="page"{% endif %}>Управление</a>
+  {% endif %}
+</nav>
