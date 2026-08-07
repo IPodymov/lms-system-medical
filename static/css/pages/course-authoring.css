@@ -36,12 +36,6 @@
   line-height: var(--leading-normal);
 }
 
-.course-create__dates {
-  display: grid;
-  gap: var(--space-12);
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-}
-
 /* -------------------------------------------------------------------------
    Структура курса: курс → раздел → тема → блок
    ------------------------------------------------------------------------- */

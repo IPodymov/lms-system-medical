@@ -17,7 +17,9 @@ from .models import (
     CourseEnrollmentLink,
     CourseMaterialLink,
     CourseRun,
+    CourseSection,
     FileContent,
+    Lesson,
     TextContent,
 )
 
@@ -639,3 +641,93 @@ class CourseAuthoringFormTests(TestCase):
 
         self.assertContains(response, "js/quiz_editor")
         self.assertNotContains(response, "const markerLayer")
+
+
+class CourseBuilderReorderTests(TestCase):
+    """Кнопки «вверх / вниз» — альтернатива перетаскиванию (WCAG 2.5.7).
+
+    Перетаскивание доступно только указателю: без этих кнопок переупорядочить
+    программу с клавиатуры было невозможно вообще. Работают они обычной
+    отправкой формы, то есть и без JavaScript.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user("builder@example.test", "password")
+        self.organization = Organization.objects.create(
+            name="Университет", short_name="У", slug="builder-university"
+        )
+        OrganizationMembership.objects.create(
+            organization=self.organization,
+            user=self.user,
+            role=OrganizationMembership.Role.TEACHER,
+        )
+        self.client.force_login(self.user)
+        self.course = Course.objects.create(
+            organization=self.organization,
+            title="Курс",
+            slug="builder-course",
+            created_by=self.user,
+        )
+        self.course.authors.create(user=self.user, role="owner")
+        self.section = CourseSection.objects.create(
+            course=self.course, title="Раздел", position=1, is_published=True
+        )
+        self.first = Lesson.objects.create(
+            section=self.section, title="Первая", position=1, is_published=True
+        )
+        self.second = Lesson.objects.create(
+            section=self.section, title="Вторая", position=2, is_published=True
+        )
+
+    def _titles(self):
+        return list(self.section.lessons.values_list("title", flat=True))
+
+    def test_lesson_moves_down_and_page_opens_at_the_moved_topic(self):
+        response = self.client.post(
+            reverse("course-edit", args=[self.course.pk]),
+            {"action": "move_lesson", "lesson_id": self.first.pk, "direction": "down"},
+        )
+
+        self.assertEqual(self._titles(), ["Вторая", "Первая"])
+        # Якорь в адресе возврата: после перестановки страница должна
+        # открыться на переставленной теме, а не уехать в начало.
+        self.assertEqual(response["Location"].split("#")[-1], f"lesson-{self.first.pk}")
+
+    def test_moving_the_first_lesson_up_changes_nothing(self):
+        self.client.post(
+            reverse("course-edit", args=[self.course.pk]),
+            {"action": "move_lesson", "lesson_id": self.first.pk, "direction": "up"},
+        )
+
+        self.assertEqual(self._titles(), ["Первая", "Вторая"])
+
+    def test_blocks_move_within_their_lesson(self):
+        first = ContentBlock.objects.create(
+            lesson=self.first, title="Блок 1", position=1, type="text"
+        )
+        second = ContentBlock.objects.create(
+            lesson=self.first, title="Блок 2", position=2, type="text"
+        )
+
+        self.client.post(
+            reverse("course-edit", args=[self.course.pk]),
+            {"action": "move_block", "block_id": second.pk, "direction": "up"},
+        )
+
+        self.assertEqual(
+            list(self.first.blocks.values_list("title", flat=True)), ["Блок 2", "Блок 1"]
+        )
+        first.refresh_from_db()
+        self.assertEqual(first.position, 2)
+
+    def test_move_buttons_are_rendered_and_edges_are_disabled(self):
+        response = self.client.get(reverse("course-edit", args=[self.course.pk]))
+
+        self.assertContains(response, 'name="direction" value="up"')
+        self.assertContains(response, 'name="direction" value="down"')
+        self.assertContains(response, "Переместить тему «Первая» выше")
+        # У первой темы кнопка «вверх» недоступна, у последней — «вниз».
+        self.assertContains(response, "disabled", count=2)
+        self.assertContains(response, "js/course_builder")
+        self.assertNotContains(response, "enableSorting(")

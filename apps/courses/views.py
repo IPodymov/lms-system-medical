@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -560,6 +561,51 @@ def _handle_reorder_lessons(request, course):
     messages.success(request, "Порядок тем сохранён.")
 
 
+def _move_within(items: list, moved, direction: str) -> list | None:
+    """Список id соседей с переставленным на шаг элементом.
+
+    None означает, что двигать некуда: элемент уже первый или последний.
+    """
+    ids = [str(item.pk) for item in items]
+    index = ids.index(str(moved.pk))
+    target = index - 1 if direction == "up" else index + 1
+    if not 0 <= target < len(ids):
+        return None
+    ids[index], ids[target] = ids[target], ids[index]
+    return ids
+
+
+def _handle_move_lesson(request, course):
+    """Переставить тему на шаг вверх или вниз.
+
+    Обязательная альтернатива перетаскиванию: WCAG 2.5.7 требует, чтобы
+    любое действие, доступное одним указателем, выполнялось и без него.
+    Работает без JavaScript — это обычная отправка формы.
+    """
+    lesson = get_object_or_404(Lesson, pk=request.POST.get("lesson_id"), section__course=course)
+    siblings = list(lesson.section.lessons.all())
+    ordered_ids = _move_within(siblings, lesson, request.POST.get("direction"))
+    if ordered_ids is None:
+        return None
+    services.reorder({str(item.pk): item for item in siblings}, ordered_ids)
+    messages.success(request, "Порядок тем сохранён.")
+    return f"lesson-{lesson.pk}"
+
+
+def _handle_move_block(request, course):
+    """То же для учебного блока внутри темы."""
+    block = get_object_or_404(
+        ContentBlock, pk=request.POST.get("block_id"), lesson__section__course=course
+    )
+    siblings = list(block.lesson.blocks.all())
+    ordered_ids = _move_within(siblings, block, request.POST.get("direction"))
+    if ordered_ids is None:
+        return None
+    services.reorder({str(item.pk): item for item in siblings}, ordered_ids)
+    messages.success(request, "Порядок блоков сохранён.")
+    return f"block-{block.pk}"
+
+
 _COURSE_EDIT_ACTIONS = {
     "save_course": _handle_save_course,
     "open_enrollment": _handle_open_enrollment,
@@ -577,6 +623,8 @@ _COURSE_EDIT_ACTIONS = {
     "delete_block": _handle_delete_block,
     "reorder_blocks": _handle_reorder_blocks,
     "reorder_lessons": _handle_reorder_lessons,
+    "move_lesson": _handle_move_lesson,
+    "move_block": _handle_move_block,
 }
 
 
@@ -587,9 +635,11 @@ def course_edit(request, course_id):
         raise PermissionDenied
     if request.method == "POST":
         handler = _COURSE_EDIT_ACTIONS.get(request.POST.get("action"))
-        if handler:
-            handler(request, course)
-        return redirect("course-edit", course.pk)
+        # Обработчик может вернуть якорь: после перестановки страница должна
+        # открыться на переставленном элементе, а не уехать в начало.
+        anchor = handler(request, course) if handler else None
+        url = reverse("course-edit", args=[course.pk])
+        return redirect(f"{url}#{anchor}" if anchor else url)
     blocks = (
         ContentBlock.objects.filter(lesson__section__course=course)
         .select_related("lesson__section", "file_content", "quiz")
